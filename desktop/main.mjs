@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, safeStorage, Notification, Tray, Menu } from 'electron';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { checkLatestRelease } from './update-check.mjs';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 const isolatedTestData = process.env.WND_TEST_USER_DATA_DIR
@@ -256,6 +257,14 @@ async function createDesktopWindow() {
   refreshPluggyProvider();
 
   const senderIsApp = event => mainWindow && !mainWindow.isDestroyed() && event.sender === mainWindow.webContents;
+  ipcMain.handle('wnd:updates-check', async event => {
+    if (!senderIsApp(event)) throw Error('Origem inválida.');
+    return checkLatestRelease(app.getVersion());
+  });
+  ipcMain.handle('wnd:updates-open', event => {
+    if (!senderIsApp(event)) throw Error('Origem inválida.');
+    return shell.openExternal('https://github.com/wnd-studio/Kito/releases/latest');
+  });
   ipcMain.handle('wnd:startup-status', event => {
     if (!senderIsApp(event)) throw Error('Origem inválida.');
     return loginSettings();

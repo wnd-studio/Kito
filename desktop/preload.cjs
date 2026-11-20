@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('wndWindow', {
     return () => ipcRenderer.removeListener('wnd:window-maximized', listener);
   },
   startupStatus: () => ipcRenderer.invoke('wnd:startup-status'),
+  checkUpdates: () => ipcRenderer.invoke('wnd:updates-check'),
+  openUpdate: () => ipcRenderer.invoke('wnd:updates-open'),
   setStartup: enabled => ipcRenderer.invoke('wnd:startup-set', enabled)
 });
 

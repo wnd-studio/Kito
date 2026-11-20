@@ -78,6 +78,14 @@ async function main() {
 
     // Uma instalação vazia permite cadastrar uma vaga, rejeitar e excluir sem importador externo.
     await page.locator('a[data-view="vagas"]').first().click();
+    const searchStyle = await page.locator('#job-search').evaluate(input => {
+      input.focus();
+      const css=getComputedStyle(input);
+      return {border:css.borderTopWidth,background:css.backgroundColor,radius:css.borderTopLeftRadius};
+    });
+    assert.equal(searchStyle.border,'0px','Busca de vagas deve ter apenas uma borda externa');
+    assert.equal(searchStyle.background,'rgba(0, 0, 0, 0)','O input de busca não deve desenhar um segundo retângulo');
+    assert.equal(searchStyle.radius,'0px');
     await page.getByText('Nenhuma vaga encontrada').waitFor();
     await page.locator('.job-table [data-action="add-job"]').click();
     const jobForm=page.locator('form[data-form="job"]');
@@ -90,8 +98,10 @@ async function main() {
     assert.equal(await page.locator('.job-table > .job-list-item').count(),1);
     assert.match(await page.locator('.job-table .job-added').innerText(), /Adicionada em \d{2}\/\d{2}\/\d{4} às \d{2}:\d{2}/);
     await page.locator('.job-table [data-action="reject-job"]').click();
+    await page.locator('.kito-confirm [data-confirm="accept"]').click();
     await page.locator('.job-table > .job-list-item .status-rejected').waitFor();
     await page.locator('.job-table [data-action="delete-job"]').click();
+    await page.locator('.kito-confirm [data-confirm="accept"]').click();
     await page.getByText('Nenhuma vaga encontrada').waitFor();
     await page.reload();
     await page.locator('main[data-view="vagas"]').waitFor();
@@ -367,6 +377,7 @@ async function main() {
     await page.locator('form[data-form="space-edit"] button[type=submit]').click();
     await page.locator('.page-heading').getByText('Projetos, referências e checklist').waitFor();
     await page.locator('.space-block').filter({hasText:'Referências'}).locator('[data-action="delete-space-item"]').click();
+    await page.locator('.kito-confirm [data-confirm="accept"]').click();
     await page.waitForFunction(() => document.querySelectorAll('.space-block').length === 2);
     assert.equal(await page.locator('.space-block').count(), 2);
 

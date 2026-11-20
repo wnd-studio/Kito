@@ -8,7 +8,27 @@ const state = { view: 'overview', hub: null, banking: null, jobs: [], counts: {}
   bankExpanded: { connections: false, movements: true }, mailStatus: null, mailThreads: [], mailThread: null,
   mailSearch: '', mailFilter: 'all', mailDraft: '', mailError: '', mailLoading: false,
   mailConnecting: false, mailCancelling: false, mailNotice: '', mailSelectedId: '', mailThreadLoading: false,
-  startup: null, startupError: '' };
+  startup: null, startupError: '', updates: null, updateError: '', updateChecking: false };
+
+async function checkKitoUpdates({manual=false}={}) {
+  if(!window.wndWindow?.checkUpdates || state.updateChecking)return;
+  state.updateChecking=true;
+  if(manual && state.hub)render();
+  try {
+    state.updates=await window.wndWindow.checkUpdates();
+    state.updateError='';
+  } catch(error) {
+    state.updateError='Não foi possível consultar o GitHub. Confira sua conexão e tente novamente.';
+    if(manual)toast(state.updateError,'error');
+  } finally {
+    state.updateChecking=false;
+    if(state.hub)render();
+  }
+}
+if(window.wndWindow?.checkUpdates){
+  setTimeout(()=>checkKitoUpdates(),4000);
+  setInterval(()=>checkKitoUpdates(),60*60*1000);
+}
 
 if (window.wndWindow?.startupStatus) {
   window.wndWindow.startupStatus().then(status => {
@@ -303,6 +323,9 @@ function render(){
   document.title=`${label} · Kito`;
   $$('.nav-link').forEach(el=>{const active=el.dataset.view===state.view;el.classList.toggle('active',active);if(active)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
   main.innerHTML=chosen?spaceView(chosen):views[state.view]();
+  if(state.updates?.updateAvailable){
+    main.insertAdjacentHTML('afterbegin',`<aside class="update-banner" role="status"><div><strong>Nova versão do Kito disponível · ${escapeHTML(state.updates.latestVersion)}</strong><span>Você está usando a versão ${escapeHTML(state.updates.currentVersion)}. Baixe a mais recente para continuar atualizado.</span></div><button type="button" class="button primary" data-action="download-update">${icon('download',17)} Baixar atualização</button></aside>`);
+  }
   main.dataset.view=state.view;
   if(state.view==='overview'){
     const grid=main.querySelector('.dashboard-grid');
@@ -904,7 +927,7 @@ function settingsView(){
     <div class="layout-editor">${layoutColumnMarkup('main','Coluna principal','Área mais larga')}${layoutColumnMarkup('aside','Coluna lateral','Resumo e informações rápidas')}</div>
   </section>
   <section class="panel settings-panel">${cardHeading('Módulos do Kito')}<p class="panel-description">Ative ou oculte os módulos do menu. Seus dados são preservados.</p><div class="settings-list">${Object.entries(moduleLabels).map(([key,label])=>`<label class="settings-row"><span><strong>${label}</strong><small>${({tasks:'Listas e prioridades',routine:'Hábitos e atividades diárias',finance:'Entradas, despesas e saldo mensal',pc:'Informações do computador',shortcuts:'Links frequentes'})[key]}</small></span><input type="checkbox" class="switch-input" data-action="toggle-module" data-module-name="${key}" ${modules[key]?'checked':''}><span class="switch-ui" aria-hidden="true"></span></label>`).join('')}</div></section>
-  <section class="panel settings-panel settings-about">${cardHeading('Sobre o Kito')}<div class="spec-row"><span>Armazenamento</span><strong>SQLite · local</strong></div><div class="spec-row"><span>Privacidade</span><strong>Seus dados ficam neste computador</strong></div><div class="spec-row"><span>Versão</span><strong>1.0.5</strong></div></section>`;
+  <section class="panel settings-panel settings-about">${cardHeading('Sobre o Kito')}<div class="spec-row"><span>Armazenamento</span><strong>SQLite · local</strong></div><div class="spec-row"><span>Privacidade</span><strong>Seus dados ficam neste computador</strong></div><div class="spec-row"><span>Versão</span><strong>${escapeHTML(state.updates?.currentVersion||'1.0.6')}</strong></div><div class="update-settings"><button type="button" class="button outline" data-action="check-updates" ${state.updateChecking?'disabled':''}>${icon('refresh',16)} ${state.updateChecking?'Verificando...':'Verificar atualizações'}</button><small>${state.updates?.updateAvailable?'Uma nova versão está disponível.':state.updateError|| (state.updates?'Você está usando a versão mais recente.':'Aguardando verificação.')}</small></div></section>`;
 }
 
 function spacesView(){
@@ -945,6 +968,42 @@ function toast(message,type='success',undo=null) {
 let focusBeforeDialog=null;
 function closeDialog(){if(dialogBackdrop.hidden)return;dialogBackdrop.hidden=true;document.body.classList.remove('dialog-open');$('#dialog-body').innerHTML='';if(focusBeforeDialog?.isConnected)focusBeforeDialog.focus();focusBeforeDialog=null;}
 function openDialog(title,subtitle,html){focusBeforeDialog=document.activeElement;$('#dialog-title').textContent=title;$('#dialog-label').textContent=subtitle;$('#dialog-body').innerHTML=html;dialogBackdrop.hidden=false;document.body.classList.add('dialog-open');($('#dialog-body').querySelector('input:not([type=hidden]),textarea,button')||$('#close-dialog')).focus();}
+function confirmKito(message) {
+  return new Promise(resolve => {
+    const previousFocus=document.activeElement;
+    const backdrop=document.createElement('div');
+    backdrop.className='kito-confirm-backdrop';
+    backdrop.innerHTML=`<section class="kito-confirm" role="alertdialog" aria-modal="true" aria-labelledby="kito-confirm-title" aria-describedby="kito-confirm-message">
+      <span class="dialog-label">KITO · CONFIRMAÇÃO</span>
+      <h2 id="kito-confirm-title">Confirmar ação</h2>
+      <p id="kito-confirm-message"></p>
+      <div class="kito-confirm-actions"><button type="button" class="button outline" data-confirm="cancel">Cancelar</button><button type="button" class="button primary" data-confirm="accept">Confirmar</button></div>
+    </section>`;
+    backdrop.querySelector('#kito-confirm-message').textContent=message;
+    document.body.append(backdrop);
+    const buttons=[...backdrop.querySelectorAll('button')];
+    const finish=confirmed=>{
+      backdrop.removeEventListener('keydown',onKeydown);
+      backdrop.remove();
+      if(previousFocus?.isConnected)previousFocus.focus();
+      resolve(confirmed);
+    };
+    const onKeydown=event=>{
+      if(event.key==='Escape'){event.preventDefault();event.stopPropagation();finish(false);}
+      if(event.key==='Tab'){
+        const first=buttons[0],last=buttons.at(-1);
+        if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+        else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+      }
+    };
+    backdrop.addEventListener('keydown',onKeydown);
+    backdrop.addEventListener('click',event=>{
+      if(event.target===backdrop)finish(false);
+      else if(event.target.closest('[data-confirm]'))finish(event.target.closest('[data-confirm]').dataset.confirm==='accept');
+    });
+    buttons[0].focus();
+  });
+}
 const field = (label,name,placeholder='',type='text',required=false,attrs='')=>`<label class="form-field"><span>${label}</span><input name="${name}" type="${type}" placeholder="${placeholder}" ${required?'required':''} ${attrs}></label>`;
 const formActions = (label) => `<div class="form-actions"><button type="button" class="button outline" data-action="close-dialog">Cancelar</button><button type="submit" class="button primary">${icon('check',16)}${label}</button></div>`;
 function addDialog(kind){
@@ -1077,6 +1136,8 @@ document.addEventListener('click',async event=>{
   const nav=event.target.closest('a[data-view]');if(nav){event.preventDefault();navigate(nav.dataset.view,true,true);return;}
   const target=event.target.closest('[data-action]');if(!target)return;
   const {action,id}=target.dataset;
+  if(action==='check-updates')return checkKitoUpdates({manual:true});
+  if(action==='download-update')return window.wndWindow?.openUpdate?.().catch(()=>toast('Não foi possível abrir a página de download.','error'));
   if(action==='set-theme'){
     applyTheme(target.dataset.theme);
     render();
@@ -1099,7 +1160,7 @@ document.addEventListener('click',async event=>{
     toast('Correio e candidaturas sincronizados.');
   });
   if(action==='mail-disconnect')return withBusy(target,async()=>{
-    if(!confirm('Desconectar sua conta de e-mail do Kito?'))return;
+    if(!await confirmKito('Desconectar sua conta de e-mail do Kito?'))return;
     await api('/api/mail/disconnect',{});
     await refreshMail();
     toast('Gmail desconectado deste computador.');
@@ -1117,7 +1178,7 @@ document.addEventListener('click',async event=>{
         ${formActions('Salvar categoria')}</form>`);
   }
   if(action==='delete-finance-bill')return withBusy(target,async()=>{
-    if(!confirm('Excluir esta conta a pagar e o histórico dos seus pagamentos?'))return;
+    if(!await confirmKito('Excluir esta conta a pagar e o histórico dos seus pagamentos?'))return;
     await api(`/api/finance/bills/${id}/delete`,{});
     await load();toast('Conta excluída.');
   });
@@ -1125,12 +1186,12 @@ document.addEventListener('click',async event=>{
     await syncBanks();
   });
   if(action==='remove-bank-item')return withBusy(target,async()=>{
-    if(!confirm('Remover esta conexão e seus dados bancários importados do Kito? A conexão no Pluggy continuará ativa.'))return;
+    if(!await confirmKito('Remover esta conexão e seus dados bancários importados do Kito? A conexão no Pluggy continuará ativa.'))return;
     await api(`/api/banking/items/${encodeURIComponent(id)}/remove`,{});
     await load();toast('Conexão removida do Kito.');
   });
   if(action==='clear-bank-credentials')return withBusy(target,async()=>{
-    if(!window.wndBank||!confirm('Excluir as credenciais Pluggy guardadas neste computador?'))return;
+    if(!window.wndBank||!await confirmKito('Excluir as credenciais Pluggy guardadas neste computador?'))return;
     await window.wndBank.clearCredentials();
     closeDialog();await load();toast('Credenciais locais excluídas.');
   });
@@ -1165,11 +1226,11 @@ document.addEventListener('click',async event=>{
   if(action==='close-dialog')return closeDialog();
   if(action==='edit-space')return addDialog('space-edit');
   if(action==='delete-space')return withBusy(target,async()=>{
-    const s=spaceForView();if(!s||!confirm(`Excluir o espaço "${s.title}" e todos os blocos?`))return;
+    const s=spaceForView();if(!s||!await confirmKito(`Excluir o espaço "${s.title}" e todos os blocos?`))return;
     await api(`/api/spaces/${s.id}/delete`,{});state.view='spaces';await load();navigate('spaces');toast('Espaço excluído.');
   });
   if(action==='delete-space-item')return withBusy(target,async()=>{
-    if(!confirm('Excluir este bloco?'))return;
+    if(!await confirmKito('Excluir este bloco?'))return;
     await api(`/api/spaces/${target.dataset.space}/items/${id}/delete`,{});await load();toast('Bloco excluído.');
   });
   if(action==='history')return historyDialog();
@@ -1190,7 +1251,7 @@ document.addEventListener('click',async event=>{
   if(action==='job-detail')return jobDetail(id);
   if(action==='delete-job')return withBusy(target,async()=>{
     const job=state.jobs.find(item=>item.id===id);
-    if(!confirm(`Excluir definitivamente ${job?.title||'esta vaga'}? Os detalhes e o histórico serão removidos. A vaga não será importada novamente pelo mesmo link.`))return;
+    if(!await confirmKito(`Excluir definitivamente ${job?.title||'esta vaga'}? Os detalhes e o histórico serão removidos. A vaga não será importada novamente pelo mesmo link.`))return;
     await api(`/api/opportunities/${id}/delete`,{});
     closeDialog();await load();toast('Vaga excluída.');
   });
@@ -1208,13 +1269,13 @@ document.addEventListener('click',async event=>{
       const message=job?.status==='approved'&&job.channel==='email'
         ?'Rejeitar esta vaga e retirar a candidatura da fila de envio?'
         :'Rejeitar esta oportunidade?';
-      if(!confirm(message))return;
+      if(!await confirmKito(message))return;
       await api(`/api/opportunities/${id}/reject`,{});toast('Oportunidade rejeitada.');
     }
     closeDialog();await load();
   });
   if(action==='packet-job')return withBusy(target,async()=>{const r=await api(`/api/opportunities/${$('#dialog').dataset.jobId}/packet`,{});toast(`Pacote salvo em: ${r.item.folder}`);});
-  if(action.startsWith('delete-'))return withBusy(target,async()=>{if(!confirm('Excluir este registro?'))return;const module=({ 'delete-task':'tasks','delete-routine':'routines','delete-transaction':'transactions','delete-shortcut':'shortcuts'})[action];await api(`/api/${module}/${id}/delete`,{});await load();toast('Registro excluído.');});
+  if(action.startsWith('delete-'))return withBusy(target,async()=>{if(!await confirmKito('Excluir este registro?'))return;const module=({ 'delete-task':'tasks','delete-routine':'routines','delete-transaction':'transactions','delete-shortcut':'shortcuts'})[action];await api(`/api/${module}/${id}/delete`,{});await load();toast('Registro excluído.');});
 });
 document.addEventListener('change',async e=>{
   const t=e.target;

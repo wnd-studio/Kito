@@ -10,7 +10,7 @@ Um aplicativo para Windows que reúne oportunidades de trabalho, tarefas, rotina
 
 [**Como usar**](#comece-aqui) · [**Funcionalidades**](#o-que-você-encontra-no-kito) · [**Desenvolvimento**](#para-desenvolvedores) · [**Guia completo**](docs/GUIA.md)
 
-![Versão](https://img.shields.io/badge/vers%C3%A3o-1.0.5-252826?style=flat-square&labelColor=141615&color=D6FF44)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-1.0.6-252826?style=flat-square&labelColor=141615&color=D6FF44)
 ![Plataforma](https://img.shields.io/badge/plataforma-Windows-252826?style=flat-square&labelColor=141615)
 ![Tecnologias](https://img.shields.io/badge/Electron-Node.js%20%2B%20SQLite-252826?style=flat-square&labelColor=141615)
 
@@ -47,7 +47,9 @@ Os dados são armazenados localmente em SQLite. As integrações externas são o
 
 ### Quero usar o aplicativo no Windows
 
-Atualmente, este repositório disponibiliza o **código-fonte**. Para gerar o instalador ou a versão portátil, siga as etapas da seção de desenvolvimento. Quando houver executáveis públicos, eles poderão ser disponibilizados em [Releases](https://github.com/wnd-studio/Kito/releases).
+**[Baixar Kito para Windows](https://github.com/wnd-studio/Kito/releases/latest)**
+
+Na página de download, escolha **Kito Setup** para instalar normalmente ou **Kito** sem Setup para executar a versão portátil. O Kito verifica se há uma nova versão disponível e mostra um aviso com botão para baixar a atualização. Você também pode procurar atualizações em **Configurações → Sobre o Kito**.
 
 > **Importante:** Windows pode exibir um aviso de segurança para versões compiladas sem assinatura digital. Confira a origem do arquivo antes de executá-lo.
 
