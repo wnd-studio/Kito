@@ -79,5 +79,5 @@ jobs:
             adb install -r output/Kito-Android-v1.0.0-preview.apk
             adb shell am start -n br.net.wnd.kito/.MainActivity
             sleep 12
-            adb shell uiautomator dump /sdcard/kito-ui.xml
-            adb shell cat /sdcard/kito-ui.xml | grep -q 'Seu dia'
+            adb shell uiautomator dump /data/local/tmp/kito-ui.xml
+            adb shell cat /data/local/tmp/kito-ui.xml | grep -q 'Seu dia'
