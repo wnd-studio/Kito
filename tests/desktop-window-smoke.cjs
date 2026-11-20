@@ -58,6 +58,11 @@ async function checkHeader(page, width) {
 
     await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(900, 700));
     await checkHeader(page, 900);
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.setZoomFactor(2));
+    await page.waitForFunction(() => innerWidth <= 470);
+    await checkHeader(page, 450);
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.setZoomFactor(1));
+    await page.waitForFunction(() => innerWidth >= 850);
     if (process.env.WND_WINDOW_SCREENSHOT) {
       await page.screenshot({ path: process.env.WND_WINDOW_SCREENSHOT, animations: 'disabled' });
     }
@@ -120,7 +125,7 @@ async function checkHeader(page, width) {
     await reopened.locator('[data-action="clear-bank-credentials"]').click();
     await reopened.locator('.bank-hero h2').getByText('Conecte suas contas pelo Pluggy').waitFor();
     assert.equal(existsSync(encryptedPath), false, 'Arquivo de credenciais não foi excluído');
-    console.log('PASSOU: controles da janela, foco, redimensionamento e ausência de cortes (1440px e 900px).');
+    console.log('PASSOU: controles da janela, persistência, redimensionamento e zoom real de 200% sem cortes.');
   } finally {
     if (application) await application.close().catch(() => {});
     rmSync(isolatedAppData, { recursive: true, force: true });
