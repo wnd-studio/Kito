@@ -84,9 +84,19 @@ jobs:
             adb exec-out screencap -p > output/Kito-Android-emulator-30s.png
             sleep 30
             adb exec-out screencap -p > output/Kito-Android-emulator-60s.png
+            # The macOS-hosted emulator can report a System UI ANR while WebView starts.
+            # Tap "Wait" when that system dialog is present, then exercise navigation.
+            adb shell input tap 300 1300
+            sleep 8
+            adb exec-out screencap -p > output/Kito-Android-emulator-after-wait.png
+            adb shell input tap 330 2140
+            sleep 8
+            adb exec-out screencap -p > output/Kito-Android-emulator-tasks.png
             adb shell pidof br.net.wnd.kito
             test -s output/Kito-Android-emulator-30s.png
             test -s output/Kito-Android-emulator-60s.png
+            test -s output/Kito-Android-emulator-after-wait.png
+            test -s output/Kito-Android-emulator-tasks.png
             adb logcat -d -v time > output/Kito-Android-logcat.txt
       - uses: actions/upload-artifact@v4
         if: always()
