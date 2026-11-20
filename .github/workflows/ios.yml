@@ -1,0 +1,76 @@
+name: Kito iOS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-simulator:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install and test mobile
+        working-directory: mobile
+        run: |
+          npm ci
+          npm test
+          npm run sync:ios
+      - name: Build iOS simulator app
+        run: |
+          xcodebuild -quiet \
+            -project mobile/ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/KitoDerivedData" \
+            CODE_SIGNING_ALLOWED=NO build
+          test -d "$RUNNER_TEMP/KitoDerivedData/Build/Products/Debug-iphonesimulator/App.app"
+      - name: Install and launch on iPhone simulator
+        run: |
+          set -euo pipefail
+          SIMULATOR_ID="$(xcrun simctl list devices available -j | jq -r '[.devices[][] | select(.name | startswith("iPhone")) | select(.state == "Shutdown") | .udid][0]')"
+          test -n "$SIMULATOR_ID"
+          test "$SIMULATOR_ID" != null
+          xcrun simctl boot "$SIMULATOR_ID"
+          xcrun simctl bootstatus "$SIMULATOR_ID" -b
+          xcrun simctl install "$SIMULATOR_ID" "$RUNNER_TEMP/KitoDerivedData/Build/Products/Debug-iphonesimulator/App.app"
+          xcrun simctl launch "$SIMULATOR_ID" br.net.wnd.kito
+          sleep 12
+          mkdir -p output
+          xcrun simctl io "$SIMULATOR_ID" screenshot output/Kito-iOS-Simulator-home.png
+          test -s output/Kito-iOS-Simulator-home.png
+      - name: Package iOS simulator build
+        if: success()
+        run: |
+          mkdir -p output
+          ditto -c -k --sequesterRsrc --keepParent \
+            "$RUNNER_TEMP/KitoDerivedData/Build/Products/Debug-iphonesimulator/App.app" \
+            output/Kito-iOS-Simulator-v1.0.0-preview.zip
+          test -s output/Kito-iOS-Simulator-v1.0.0-preview.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Kito-iOS-Simulator-evidence
+          path: output/Kito-iOS-Simulator-home.png
+          if-no-files-found: warn
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Kito-iOS-Simulator-v1.0.0-preview
+          path: output/Kito-iOS-Simulator-v1.0.0-preview.zip
+          if-no-files-found: error
+          retention-days: 14

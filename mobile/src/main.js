@@ -392,15 +392,19 @@ async function start() {
   render();
   if (native) {
     try {
-      await StatusBar.setBackgroundColor({color: '#141615'});
+      if (Capacitor.getPlatform() === 'android') {
+        await StatusBar.setBackgroundColor({color: '#141615'});
+      }
       await StatusBar.setStyle({style: Style.Dark});
     } catch (error) { console.warn('Status bar', error); }
-    App.addListener('backButton', () => {
-      if (editor.open) editor.close();
-      else if (confirmDialog.open) confirmDialog.close();
-      else if (page !== 'home') navigate(navigation.some(([key]) => key === page) ? 'home' : 'more');
-      else App.minimizeApp();
-    });
+    if (Capacitor.getPlatform() === 'android') {
+      App.addListener('backButton', () => {
+        if (editor.open) editor.close();
+        else if (confirmDialog.open) confirmDialog.close();
+        else if (page !== 'home') navigate(navigation.some(([key]) => key === page) ? 'home' : 'more');
+        else App.minimizeApp();
+      });
+    }
   }
 }
 start();
