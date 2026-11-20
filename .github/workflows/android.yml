@@ -29,7 +29,10 @@ jobs:
           cache: gradle
           cache-dependency-path: mobile/android/**/*.gradle*
       - name: Android SDK
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+        run: |
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)
+          test -n "$SDKMANAGER"
+          "$SDKMANAGER" 'platforms;android-36' 'build-tools;36.0.0'
       - name: Install and test mobile
         working-directory: mobile
         run: |
