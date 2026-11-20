@@ -6,6 +6,10 @@
     "StatusBar": {
       "style": "DARK",
       "backgroundColor": "#141615"
+    },
+    "SystemBars": {
+      "style": "DARK",
+      "initialViewportFitValueHint": "cover"
     }
   }
 }
