@@ -1,31 +1,70 @@
+<div align="center">
+
+<img src="public/kito-mark.png" alt="Símbolo do Kito" width="100" />
+
 # Kito
 
-**Seu dia, num lugar só.** Aplicativo de desktop para Windows que reúne **vagas e candidaturas, tarefas, rotina, finanças, atalhos, informações do PC e espaços personalizados**. Os dados ficam no computador de cada usuário em um banco SQLite.
+**Seu dia, num lugar só.**
 
-## Como instalar e executar
+Um aplicativo para Windows que reúne oportunidades de trabalho, tarefas, rotina, finanças e ferramentas do dia a dia em uma interface organizada.
 
-### Windows
+[**Como usar**](#comece-aqui) · [**Funcionalidades**](#o-que-você-encontra-no-kito) · [**Desenvolvimento**](#para-desenvolvedores) · [**Guia completo**](docs/GUIA.md)
 
-Os executáveis são gerados na pasta `release/` pelo comando `npm run build:win`. A versão 1.0.5 gera um instalador (`Kito Setup 1.0.5.exe`) e uma versão portátil (`Kito 1.0.5.exe`). Não é necessário instalar Node.js para utilizar os executáveis. Em Configurações > Aparência, é possível escolher entre Kito, Meia-noite e Claro. A preferência de tema é salva localmente.
+![Versão](https://img.shields.io/badge/vers%C3%A3o-1.0.6-252826?style=flat-square&labelColor=141615&color=D6FF44)
+![Plataforma](https://img.shields.io/badge/plataforma-Windows-252826?style=flat-square&labelColor=141615)
+![Tecnologias](https://img.shields.io/badge/Electron-Node.js%20%2B%20SQLite-252826?style=flat-square&labelColor=141615)
 
-Na primeira execução de uma instalação nova, o aplicativo cria um banco de dados próprio no perfil do usuário do Windows. A opção **Iniciar com o Windows** pode ser ativada em **Configurações** ou pelo menu da bandeja. Ao fechar a janela, o aplicativo continua na bandeja para executar sincronizações habilitadas. Escolha **Encerrar Kito** no ícone da bandeja para sair.
+</div>
 
-O aplicativo mantém compatibilidade com instalações antigas que já usavam o banco na pasta local `Vagas/data`, quando identificado o marcador de migração correspondente. Atualizações devem preservar os dados de cada usuário.
+---
 
-### Desenvolvimento
+## O que é o Kito?
 
-Requisitos para compilar e executar o projeto
+O Kito é uma central pessoal de desktop. Você pode acompanhar candidaturas, planejar o dia, registrar despesas e acessar ferramentas do computador sem precisar alternar entre vários aplicativos.
 
-- Windows 10/11
-- Node.js 24 ou superior
-- npm
+Os dados são armazenados localmente em SQLite. As integrações externas são opcionais e precisam ser configuradas pelo usuário.
+
+## O que você encontra no Kito
+
+| Área | Para que serve |
+| --- | --- |
+| **Hoje** | Visualizar um resumo do dia e acessar suas próximas ações. |
+| **Vagas & propostas** | Buscar vagas remotas na Remotive, verificar anúncios, cadastrar oportunidades e acompanhar candidaturas. |
+| **Correio** | Conectar uma conta Gmail e acompanhar mensagens relacionadas às candidaturas. |
+| **Tarefas e rotina** | Organizar atividades, compromissos e hábitos. |
+| **Finanças** | Registrar movimentações, controlar contas e consultar dados bancários pelo Pluggy, com indicação da última atualização da fonte. |
+| **Espaços** | Agrupar notas, links e checklists por assunto. |
+| **Meu PC e atalhos** | Consultar informações do computador e abrir itens frequentes. |
+
+### Uma interface para personalizar
+
+- **Quatro temas** — Kito, Meia-noite, Claro e Grafite.
+- **Atalhos rápidos** — pressione `Ctrl + K` para navegar e abrir ações.
+- **Visão geral ajustável** — organize cards e oculte módulos que não usa.
+- **Controle de candidaturas** — cada candidatura precisa ser aprovada individualmente antes do envio pelo Kito.
+
+## Comece aqui
+
+### Quero usar o aplicativo no Windows
+
+**[Baixar Kito para Windows](https://github.com/wnd-studio/Kito/releases/latest)**
+
+Na página de download, escolha **Kito Setup** para instalar normalmente ou **Kito** sem Setup para executar a versão portátil. O Kito verifica se há uma nova versão disponível e mostra um aviso com botão para baixar a atualização. Você também pode procurar atualizações em **Configurações → Sobre o Kito**.
+
+> **Importante:** Windows pode exibir um aviso de segurança para versões compiladas sem assinatura digital. Confira a origem do arquivo antes de executá-lo.
+
+### Para desenvolvedores
+
+Você vai precisar de **Windows 10 ou 11**, **Node.js 24+** e **npm**.
 
 ```powershell
+git clone https://github.com/wnd-studio/Kito.git
+cd Kito
 npm ci
 npm run desktop
 ```
 
-Para usar pelo navegador local, execute `npm start` e abra `http://127.0.0.1:4517`. O servidor escuta somente no computador onde foi iniciado. A integração com Gmail e o armazenamento protegido de credenciais são fornecidos pela versão Electron.
+Para executar os testes e gerar os executáveis:
 
 ```powershell
 npm test
@@ -33,84 +72,33 @@ npm run test:ui
 npm run build:win
 ```
 
-Os testes utilizam bancos temporários e dependem de Microsoft Edge e Playwright no ambiente local para os testes de interface. O teste específico da janela Electron pode ser executado com `node tests/desktop-window-smoke.cjs`.
+O build gera um **instalador** e uma **versão portátil** na pasta `release/`. Para usar a interface apenas no navegador local, execute `npm start` e abra `http://127.0.0.1:4517`.
 
-## Primeiros passos
+## Integrações opcionais
 
-Ao abrir o aplicativo, use a barra lateral para navegar entre **Hoje, Vagas, Correio, Tarefas, Rotina, Finanças, Espaços, Meu PC, Atalhos e Configurações**. Use `Ctrl+K` para buscar páginas e espaços ou abrir ações rápidas como **Nova tarefa**, **Nova atividade na rotina**, **Novo lançamento** e **Adicionar vaga**. Use as setas, Enter e Esc para navegar e fechar a busca. Em **Hoje**, você pode ocultar os valores financeiros.
+**Gmail** — para ler mensagens e enviar candidaturas aprovadas, configure credenciais OAuth próprias do Google. O Kito nunca deve ser utilizado para enviar candidaturas sem a aprovação individual do usuário.
 
-Em **Configurações → Preferências de vagas**, defina suas áreas, palavras-chave, regiões aceitas, trabalho remoto, senioridade e pontuação mínima. Uma instalação nova começa com filtros gerais, sem profissão ou cidade predefinidas. Alterar os critérios afeta as próximas importações, preservando as vagas existentes. Também é possível ocultar módulos e reorganizar os cards da visão geral.
+**Pluggy** — para consultar informações bancárias, conecte credenciais próprias. Os lançamentos manuais funcionam sem essa integração.
 
-Em **Vagas → Adicionar vaga**, informe empresa, cargo e link do anúncio para salvar uma oportunidade manualmente. O link de candidatura, localização, contrato e demais detalhes são opcionais. Novas vagas ficam aguardando revisão. O aplicativo identifica links duplicados e evita reimportar vagas já descartadas.
+**Importação de vagas** — aceita oportunidades verificadas por uma fonte ou automação configurada pelo usuário. Uma instalação nova não faz buscas automáticas na internet por conta própria.
 
-Revise oportunidades, descarte as que não interessam e exclua definitivamente registros que não deseja manter. Candidaturas em processamento ou já enviadas ficam protegidas contra exclusão por esse fluxo.
+As instruções de configuração, os exemplos de importação e as explicações sobre privacidade estão no **[guia completo](docs/GUIA.md)**.
 
-## Importação de vagas
+## Privacidade e dados
 
-A busca externa por anúncios exige uma fonte ou automação configurada pelo próprio usuário. O aplicativo importa vagas verificadas em arquivos JSON ou NDJSON e registra os resultados localmente. A instalação não inclui uma rotina universal de busca automática de empregos.
+O Kito mantém o banco SQLite, configurações e documentos gerados no computador do usuário. O repositório exclui arquivos pessoais, tokens, credenciais, backups, bancos de dados e builds locais por meio do `.gitignore`.
 
-```powershell
-node daily-import.mjs .\imports\vagas-verificadas.json
-```
+Antes de conectar serviços externos, confira as permissões e a configuração de cada integração no [guia completo](docs/GUIA.md#conectar-o-gmail).
 
-O importador valida campos obrigatórios, data e evidências da verificação, prazo, preferências do usuário e duplicatas por URL. O histórico aparece em **Vagas → Histórico de buscas**.
+## Projeto
 
-Modelo de entrada para uma vaga. Substitua todos os textos e links e registre a data real da conferência antes de importar.
+- **Tecnologias:** Electron, Node.js, JavaScript, HTML, CSS e SQLite.
+- **Identidade visual:** [Sistema visual do Kito](DESIGN.md).
+- **Documentação detalhada:** [Guia de uso e desenvolvimento](docs/GUIA.md).
+- **Licença:** nenhuma licença de redistribuição foi declarada neste repositório.
 
-```json
-{
-  "company": "Empresa Exemplo",
-  "title": "Analista de Produto",
-  "source": "Página de carreiras",
-  "source_url": "https://example.com/vaga/123",
-  "application_url": "https://example.com/candidatura/123",
-  "location": "Remoto",
-  "contract_type": "CLT",
-  "requirements": "Requisitos realmente conferidos no anúncio",
-  "match_reason": "Motivo real de aderência",
-  "description": "Descrição resumida da função",
-  "channel": "form",
-  "cover_letter": "Apresentação personalizada para revisão",
-  "verification": {
-    "status": "verified",
-    "checked_at": "SUBSTITUIR_PELA_DATA_ISO_DA_CONFERENCIA",
-    "notes": "Descrever onde e como os links e a disponibilidade foram conferidos."
-  }
-}
-```
+<div align="center">
 
-Os canais de candidatura aceitos são `form`, `manual` e `email`. O envio de e-mails exige destinatário (`recipient`), assunto (`subject`) e a integração Gmail autorizada.
+<sub>Kito · Feito para manter o essencial à mão.</sub>
 
-## Aprovação e envio de candidaturas
-
-Cada candidatura exige aprovação individual dentro do aplicativo. Para o canal `email`, ao clicar em **Aprovar** com o Gmail conectado, o aplicativo pode enviar a mensagem imediatamente. Caso a conexão esteja indisponível, a candidatura aprovada poderá aguardar na fila até a conexão ser restabelecida. Revise destinatário, apresentação e currículo antes de aprovar.
-
-Em candidaturas com `form` ou `manual`, o Kito abre a etapa para ação humana. Uma aprovação nessa modalidade não confirma que o formulário foi enviado. Mensagens cujo envio ficou incerto exigem conferência no Gmail antes de qualquer nova tentativa.
-
-## Conectar o Gmail
-
-A integração é opcional e utiliza a API do Gmail por OAuth. Cada pessoa deve criar suas credenciais no Google Cloud, ativar a **Gmail API**, configurar a tela de consentimento OAuth e criar credenciais OAuth do tipo **Aplicativo para computador**. Projetos em modo de teste devem incluir os respectivos usuários de teste. O consentimento solicita permissões de leitura e envio de mensagens.
-
-Abra **Correio** no aplicativo Windows, informe o Client ID e o Client Secret da sua própria aplicação OAuth e clique em **Conectar Gmail**. O aplicativo armazena credenciais e tokens com a proteção de dados do Windows no perfil local do usuário.
-
-Com o Gmail conectado, o Kito consulta novas mensagens e pode enviar avisos de oportunidades para o **próprio endereço de e-mail autorizado**. Esses avisos são independentes de candidaturas. O aplicativo acompanha conversas vinculadas às candidaturas.
-
-## Finanças e Pluggy
-
-O registro manual de entradas, despesas e contas a pagar funciona localmente. A conexão bancária via Pluggy é opcional e de leitura, exigindo credenciais criadas por cada usuário.
-
-Em **Finanças → Configurar Pluggy**, informe o Client ID e Client Secret da aplicação Pluggy. A seguir, adicione os identificadores `itemId` das conexões autorizadas e use **Sincronizar**. Os saldos e transações importados ficam separados dos lançamentos manuais. As credenciais ficam criptografadas pelo Windows na versão desktop. O modo navegador aceita `PLUGGY_CLIENT_ID` e `PLUGGY_CLIENT_SECRET` como variáveis de ambiente.
-
-## Dados pessoais e privacidade
-
-O banco SQLite, os documentos de candidatura gerados e as credenciais pertencem à instalação local de cada usuário. Para realizar backup, encerre o aplicativo pela bandeja e copie seu diretório de dados do usuário. Em desenvolvimento, o banco padrão fica em `data/vagas.sqlite`, e os documentos preparados ficam em `outbox/`.
-
-As pastas de dados e credenciais, executáveis gerados, backups, arquivos importados e segredos estão excluídos do controle de versão pelo `.gitignore`. Verifique o conteúdo do repositório antes de publicá-lo e nunca inclua arquivos `.env`, tokens OAuth, dados bancários ou currículos pessoais.
-
-A conexão com Gmail e Pluggy usa os serviços dessas plataformas quando habilitada. Os comandos de importação e os serviços externos podem depender de acesso à internet.
-
-## Publicação de código e distribuição
-
-O código-fonte pode ser compartilhado pelo GitHub depois da revisão de privacidade. Este repositório não declara uma licença de redistribuição. Para fornecer um executável a outras pessoas, gere uma compilação Windows, teste o instalador e a versão portátil em um perfil limpo e anexe os executáveis à release correspondente.
-
-A identidade visual Kito está documentada em `DESIGN.md`. O arquivo `public/kito.css` é a última camada de estilos carregada pela interface.
+</div>
