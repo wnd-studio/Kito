@@ -28,7 +28,6 @@ jobs:
           java-version: '21'
           cache: gradle
           cache-dependency-path: mobile/android/**/*.gradle*
-      - uses: android-actions/setup-android@v3
       - name: Android SDK
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Install and test mobile
