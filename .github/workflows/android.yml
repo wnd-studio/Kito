@@ -61,9 +61,11 @@ jobs:
 
   android-emulator:
     needs: android
-    runs-on: macos-15-intel
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Enable KVM for Android emulator
+        run: sudo chmod 666 /dev/kvm
       - uses: actions/download-artifact@v4
         with:
           name: Kito-Android-v1.0.0-preview
@@ -71,39 +73,34 @@ jobs:
       - name: Android emulator smoke test
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 34
           arch: x86_64
           profile: pixel_6
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
           script: |
+            trap 'adb logcat -d -v time > output/Kito-Android-logcat.txt || true' EXIT
             adb logcat -c
             adb install -r output/Kito-Android-v1.0.0-preview.apk
             adb shell am start -n br.net.wnd.kito/.MainActivity
-            sleep 30
+            sleep 25
             adb shell pidof br.net.wnd.kito
-            adb exec-out screencap -p > output/Kito-Android-emulator-30s.png
-            sleep 30
-            adb exec-out screencap -p > output/Kito-Android-emulator-60s.png
-            # The macOS-hosted emulator can report a System UI ANR while WebView starts.
-            # Tap "Wait" when that system dialog is present, then exercise navigation.
-            adb shell input tap 300 1300
-            sleep 8
-            adb exec-out screencap -p > output/Kito-Android-emulator-after-wait.png
+            adb exec-out screencap -p > output/Kito-Android-emulator-home.png
             adb shell input tap 330 2140
-            sleep 8
+            sleep 5
             adb exec-out screencap -p > output/Kito-Android-emulator-tasks.png
             adb shell pidof br.net.wnd.kito
-            test -s output/Kito-Android-emulator-30s.png
-            test -s output/Kito-Android-emulator-60s.png
-            test -s output/Kito-Android-emulator-after-wait.png
+            test -s output/Kito-Android-emulator-home.png
             test -s output/Kito-Android-emulator-tasks.png
-            adb logcat -d -v time > output/Kito-Android-logcat.txt
+            timeout 40s adb shell uiautomator dump /sdcard/kito-ui.xml
+            adb shell cat /sdcard/kito-ui.xml > output/Kito-Android-ui.xml
+            grep -q 'Lista limpa' output/Kito-Android-ui.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Kito-Android-emulator-evidence
           path: |
             output/Kito-Android-emulator-*.png
+            output/Kito-Android-ui.xml
             output/Kito-Android-logcat.txt
           if-no-files-found: warn
           retention-days: 14
