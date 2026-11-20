@@ -71,6 +71,9 @@ CREATE TABLE IF NOT EXISTS finance_bill_payments (
 );
 `);
 db.exec('PRAGMA foreign_keys=ON');
+if (!db.prepare('PRAGMA table_info(bank_items)').all().some(column => column.name === 'source_updated_at')) {
+  db.exec('ALTER TABLE bank_items ADD COLUMN source_updated_at TEXT');
+}
 
 const ISO = () => new Date().toISOString();
 const str = (v, max=300) => String(v ?? '').trim().slice(0, max);
@@ -258,7 +261,9 @@ export function removeBankItem(value) {
 
 export function getBanking(month = new Date().toISOString().slice(0, 7)) {
   if (!validMonth(month)) throw Error('Mês inválido.');
-  const items = db.prepare('SELECT * FROM bank_items ORDER BY institution, id').all();
+  const items = db.prepare(`SELECT i.*, (SELECT MAX(t.occurred_on) FROM bank_transactions t
+    JOIN bank_accounts a ON a.id=t.account_id WHERE a.item_id=i.id) AS latest_transaction_on
+    FROM bank_items i ORDER BY institution, id`).all();
   const accounts = db.prepare('SELECT * FROM bank_accounts ORDER BY name, id').all();
   const allTransactions = db.prepare(`SELECT t.*, o.category AS category_override,
     a.name AS account_name, a.currency, a.type AS account_type, i.institution
@@ -304,9 +309,11 @@ export function saveBankSync(value, item, accountsWithTransactions) {
     Number.isSafeInteger(Math.round(amount * 100)) ? Math.round(amount * 100) : null;
   db.exec('BEGIN IMMEDIATE');
   try {
-    db.prepare(`UPDATE bank_items SET institution=?,status=?,consent_expires_at=?,last_synced_at=?,last_error=NULL WHERE id=?`)
+    db.prepare(`UPDATE bank_items SET institution=?,status=?,consent_expires_at=?,last_synced_at=?,
+      source_updated_at=?,last_error=NULL WHERE id=?`)
       .run(str(item.connector?.name || item.connector?.institutionName || 'Instituição', 120),
-        str(item.status || 'UNKNOWN', 50), item.consentExpiresAt || null, now, itemId);
+        str(item.status || 'UNKNOWN', 50), item.consentExpiresAt || null, now,
+        item.lastUpdatedAt && !Number.isNaN(Date.parse(item.lastUpdatedAt)) ? new Date(item.lastUpdatedAt).toISOString() : null, itemId);
     const upsertAccount = db.prepare(`INSERT INTO bank_accounts(id,item_id,name,type,subtype,currency,balance_cents,updated_at)
       VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET item_id=excluded.item_id,name=excluded.name,
       type=excluded.type,subtype=excluded.subtype,currency=excluded.currency,balance_cents=excluded.balance_cents,updated_at=excluded.updated_at`);
@@ -319,9 +326,7 @@ export function saveBankSync(value, item, accountsWithTransactions) {
       if (!accountId || account.itemId !== itemId || !Array.isArray(transactions)) throw Error('Conta inválida retornada pelo Pluggy.');
       upsertAccount.run(accountId, itemId, str(account.marketingName || account.name || 'Conta', 160),
         str(account.type, 24), str(account.subtype, 60), str(account.currencyCode || 'BRL', 8), cents(account.balance), now);
-      // A API retorna o recorte atual de 180 dias. Remova transações que saíram desse recorte
-      // ou que foram removidas no banco, dentro da mesma transação SQLite da importação.
-      db.prepare('DELETE FROM bank_transactions WHERE account_id=?').run(accountId);
+      // Uma resposta parcial da instituição não deve apagar transações já importadas.
       for (const transaction of transactions) {
         if (!transaction?.id || transaction.accountId !== accountId ||
             !validDate(transaction.date?.slice(0, 10)) || cents(transaction.amount) === null) {
@@ -332,10 +337,6 @@ export function saveBankSync(value, item, accountsWithTransactions) {
           transaction.date.slice(0, 10), str(transaction.type, 30), str(transaction.status, 30),
           str(transaction.category || '', 120), now);
       }
-    }
-    const received = accountsWithTransactions.map(({account}) => account.id);
-    for (const row of db.prepare('SELECT id FROM bank_accounts WHERE item_id=?').all(itemId)) {
-      if (!received.includes(row.id)) db.prepare('DELETE FROM bank_accounts WHERE id=?').run(row.id);
     }
     db.exec('COMMIT');
   } catch (error) {

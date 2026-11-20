@@ -8,7 +8,27 @@ const state = { view: 'overview', hub: null, banking: null, jobs: [], counts: {}
   bankExpanded: { connections: false, movements: true }, mailStatus: null, mailThreads: [], mailThread: null,
   mailSearch: '', mailFilter: 'all', mailDraft: '', mailError: '', mailLoading: false,
   mailConnecting: false, mailCancelling: false, mailNotice: '', mailSelectedId: '', mailThreadLoading: false,
-  startup: null, startupError: '' };
+  startup: null, startupError: '', updates: null, updateError: '', updateChecking: false };
+
+async function checkKitoUpdates({manual=false}={}) {
+  if(!window.wndWindow?.checkUpdates || state.updateChecking)return;
+  state.updateChecking=true;
+  if(manual && state.hub)render();
+  try {
+    state.updates=await window.wndWindow.checkUpdates();
+    state.updateError='';
+  } catch(error) {
+    state.updateError='Não foi possível consultar o GitHub. Confira sua conexão e tente novamente.';
+    if(manual)toast(state.updateError,'error');
+  } finally {
+    state.updateChecking=false;
+    if(state.hub)render();
+  }
+}
+if(window.wndWindow?.checkUpdates){
+  setTimeout(()=>checkKitoUpdates(),4000);
+  setInterval(()=>checkKitoUpdates(),60*60*1000);
+}
 
 if (window.wndWindow?.startupStatus) {
   window.wndWindow.startupStatus().then(status => {
@@ -65,6 +85,22 @@ if (window.wndWindow) {
 
 const labels = {overview:'Hoje',vagas:'Vagas & propostas',correio:'Correio',tasks:'Tarefas',routine:'Rotina',finance:'Finanças',pc:'Meu PC',shortcuts:'Atalhos',spaces:'Espaços',settings:'Configurações'};
 const moduleLabels = {tasks:'Tarefas',routine:'Rotina',finance:'Finanças',pc:'Meu PC',shortcuts:'Atalhos'};
+const themes = {
+  original: {label:'Kito', detail:'Verde-lima · identidade original'},
+  midnight: {label:'Meia-noite', detail:'Azul profundo · contraste suave'},
+  light: {label:'Claro', detail:'Neutro · ambiente iluminado'},
+  graphite: {label:'Grafite', detail:'Cinza carvão · detalhes em prata'}
+};
+const storedTheme = localStorage.getItem('kito.theme');
+let activeTheme = Object.hasOwn(themes, storedTheme) ? storedTheme : 'original';
+function applyTheme(theme) {
+  if (!Object.hasOwn(themes, theme)) return;
+  activeTheme = theme;
+  document.documentElement.dataset.theme = theme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', {original:'#141615', midnight:'#101620', light:'#F4F5F0', graphite:'#17191B'}[theme]);
+  localStorage.setItem('kito.theme', theme);
+}
+applyTheme(activeTheme);
 const overviewCardLabels = {jobs:'Caixa de entrada',tasks:'Em andamento',routine:'Sua rotina',finance:'Finanças',pc:'Este computador'};
 const overviewCardSelectors = {jobs:'.review-panel',tasks:'.tasks-panel',routine:'.routine-panel',finance:'.finance-panel',pc:'.pc-panel'};
 const defaultOverviewLayout = {main:['jobs','tasks'],aside:['routine','finance','pc']};
@@ -84,6 +120,12 @@ const displayBankMoney = (cents, currency='BRL') => hideBalances ? '••••
 const balanceButton = () => `<button type="button" class="button outline balance-visibility" data-action="toggle-balance-visibility" aria-pressed="${hideBalances}" aria-label="${hideBalances?'Mostrar':'Ocultar'} valores financeiros">${icon('shield',15)} ${hideBalances?'Mostrar valores':'Ocultar valores'}</button>`;
 const fmtDate = date => date?new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(`${date.slice(0,10)}T12:00:00`)):'Sem data';
 const fmtTime = date => date?new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(date)):'—';
+const fmtJobAdded = value => {
+  const date = new Date(value);
+  return value && Number.isFinite(date.getTime())
+    ? new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(date).replace(', ', ' às ')
+    : 'Data indisponível';
+};
 const localDay = () => {const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 const percent = (n,max) => max?Math.round(n/max*100):0;
 const button = (label, action, iconName='plus', cls='button primary') => `<button class="${cls}" data-action="${action}">${icon(iconName,16)}<span>${label}</span></button>`;
@@ -281,6 +323,9 @@ function render(){
   document.title=`${label} · Kito`;
   $$('.nav-link').forEach(el=>{const active=el.dataset.view===state.view;el.classList.toggle('active',active);if(active)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
   main.innerHTML=chosen?spaceView(chosen):views[state.view]();
+  if(state.updates?.updateAvailable){
+    main.insertAdjacentHTML('afterbegin',`<aside class="update-banner" role="status"><div><strong>Nova versão do Kito disponível · ${escapeHTML(state.updates.latestVersion)}</strong><span>Você está usando a versão ${escapeHTML(state.updates.currentVersion)}. Baixe a mais recente para continuar atualizado.</span></div><button type="button" class="button primary" data-action="download-update">${icon('download',17)} Baixar atualização</button></aside>`);
+  }
   main.dataset.view=state.view;
   if(state.view==='overview'){
     const grid=main.querySelector('.dashboard-grid');
@@ -330,7 +375,7 @@ function render(){
 function pageHeading(title,subtitle,action='') {return `<section class="page-heading"><div><h1>${title}</h1><p>${subtitle}</p></div>${action}</section>`;}
 function sectionLink(view,label='Ver tudo'){return `<a class="section-link" href="#${view}" data-view="${view}">${label} ${icon('arrow',15)}</a>`;}
 const isInternship = j => /estagi(?:o|ari[oa])|\bintern(?:ship)?\b/i.test(`${j.title||''} ${j.contract_type||''}`.normalize('NFD').replace(/[\u0300-\u036f]/g,''));
-function jobRow(j,compact=false){return `<button class="job-row ${compact?'job-compact':''}" data-action="job-detail" data-id="${j.id}"><span class="job-monogram">${escapeHTML((j.company||'?').slice(0,1).toUpperCase())}</span><span class="job-name"><strong>${text(j.title)}</strong><small>${text(j.company)}<span class="middle-dot">·</span>${text(j.contract_type||j.source||'Oportunidade')}${Number.isInteger(j.match_score)?`<span class="job-match"><span class="middle-dot">·</span>${j.match_score}/100 aderência</span>`:''}</small></span>${statusBadge(j.status)}<span class="job-arrow">${icon('chevron',17)}</span></button>`;}
+function jobRow(j,compact=false){return `<button class="job-row ${compact?'job-compact':''}" data-action="job-detail" data-id="${j.id}"><span class="job-monogram">${escapeHTML((j.company||'?').slice(0,1).toUpperCase())}</span><span class="job-name"><strong>${text(j.title)}</strong><small>${text(j.company)}<span class="middle-dot">·</span>${text(j.contract_type||j.source||'Oportunidade')}${Number.isInteger(j.match_score)?`<span class="job-match"><span class="middle-dot">·</span>${j.match_score}/100 aderência</span>`:''}</small>${compact?'':`<small class="job-added">Adicionada em ${fmtJobAdded(j.created_at)}</small>`}</span>${statusBadge(j.status)}<span class="job-arrow">${icon('chevron',17)}</span></button>`;}
 function taskRow(t,compact=false){const overdue=!t.done&&t.due_date&&t.due_date.slice(0,10)<localDay();return `<div class="task-row ${t.done?'completed':''} ${overdue?'task-overdue':''}"><label class="task-label"><input class="custom-check" type="checkbox" data-action="toggle-task" data-id="${t.id}" ${t.done?'checked':''}><span class="task-line"><strong>${text(t.title)}</strong><small>${overdue?'Atrasada · ':''}${t.due_date?fmtDate(t.due_date):'Sem prazo'}${t.priority==='high'?' · Prioridade alta':''}</small></span></label>${compact?'':`<button data-action="delete-task" data-id="${t.id}" class="quiet-icon" aria-label="Excluir tarefa ${escapeHTML(t.title)}" title="Excluir tarefa">${icon('trash',16)}</button>`}</div>`;}
 function routineRow(r,compact=false){return `<div class="task-row ${r.done?'completed':''}"><label class="task-label"><input class="custom-check" type="checkbox" data-action="toggle-routine" data-id="${r.id}" ${r.done?'checked':''}><span class="task-line"><strong>${text(r.title)}</strong><small>${r.time||'Sem horário'}</small></span></label>${compact?'':`<button data-action="delete-routine" data-id="${r.id}" class="quiet-icon" aria-label="Excluir ${escapeHTML(r.title)}" title="Excluir atividade">${icon('trash',16)}</button>`}</div>`;}
 function overviewFinance(){
@@ -346,7 +391,7 @@ function overviewFinance(){
   const oldest=dates.length?Math.min(...dates):null;
   const warning=state.bankLoadError||state.bankSyncError||items.some(item=>item.last_error||!item.last_synced_at);
   const source=state.bankLoadError?'Bancos · consulta indisponível':state.bankSyncError?'Bancos · atualização falhou':warning?'Bancos · conexão pendente':
-    `Bancos · sincronizado ${fmtTime(new Date(oldest).toISOString())}`;
+    `Bancos · consultados pelo Kito em ${fmtTime(new Date(oldest).toISOString())}`;
   return {balance:insights.netCents,income:insights.incomeCents,expense:insights.expenseCents,source,bank:true};
 }
 function overviewView(){
@@ -416,7 +461,8 @@ function overviewView(){
 }
 function filteredJobs(){
   const query=state.jobSearch.trim().toLocaleLowerCase('pt-BR');
-  return state.jobs.filter(j=>(state.jobFilter==='all'||(state.jobFilter==='internship'?isInternship(j):j.status===state.jobFilter))&&`${j.company||''} ${j.title||''} ${j.source||''} ${j.requirements||''}`.toLocaleLowerCase('pt-BR').includes(query));
+  return state.jobs.filter(j=>(state.jobFilter==='all'||(state.jobFilter==='internship'?isInternship(j):j.status===state.jobFilter))&&`${j.company||''} ${j.title||''} ${j.source||''} ${j.requirements||''}`.toLocaleLowerCase('pt-BR').includes(query))
+    .sort((a,b)=>(Date.parse(b.created_at)||0)-(Date.parse(a.created_at)||0));
 }
 function jobResultsMarkup(jobs){
   return jobs.length?jobs.map(j=>{
@@ -438,7 +484,7 @@ function updateJobResults(){
 function jobsView(){
   const filters=[['all','Todas'],['pending_review','Para revisar'],['internship','Estágios'],['approved','Aprovadas'],['submitting','Processando'],['needs_action','Ação necessária'],['failed','Falhas'],['submitted','Enviadas'],['rejected','Rejeitadas']];
   const filtered=filteredJobs();
-  return `${pageHeading('Vagas & propostas','Analise oportunidades e acompanhe cada candidatura.',`<div class="job-heading-actions">${button('Adicionar vaga','add-job')}${button('Preferências','go-settings','settings','button outline')}${button('Histórico de buscas','history','clock','button outline')}</div>`)}<div class="work-topline"><div class="searchbox">${icon('search',18)}<input id="job-search" placeholder="Buscar por empresa ou cargo" aria-label="Buscar oportunidades" value="${escapeHTML(state.jobSearch)}"></div><span class="count-note" role="status" aria-live="polite">${filtered.length} ${filtered.length===1?'oportunidade':'oportunidades'}</span></div><div class="filter-bar" role="group" aria-label="Filtrar vagas">${filters.map(([key,label])=>`<button class="filter ${state.jobFilter===key?'selected':''}" aria-pressed="${state.jobFilter===key}" data-action="job-filter" data-filter="${key}">${label}${key==='pending_review'&&state.counts.pending_review?` <span>${state.counts.pending_review}</span>`:''}</button>`).join('')}</div><section class="panel job-table"><div class="table-heading"><span>OPORTUNIDADE</span><span>STATUS</span><span></span></div>${jobResultsMarkup(filtered)}</section><p class="help-text">Use × para descartar uma vaga e a lixeira para excluí-la do histórico. Revise a candidatura antes de aprovar. Candidaturas por e-mail podem ser enviadas imediatamente pelo Gmail conectado.</p>`;
+  return `${pageHeading('Vagas & propostas','Analise oportunidades e acompanhe cada candidatura.',`<div class="job-heading-actions">${button('Buscar vagas','search-new-jobs','search')}${button('Adicionar vaga','add-job','plus','button outline')}${button('Preferências','go-settings','settings','button outline')}${button('Histórico de buscas','history','clock','button outline')}</div>`)}<div class="work-topline"><div class="searchbox">${icon('search',18)}<input id="job-search" placeholder="Buscar por empresa ou cargo" aria-label="Buscar oportunidades" value="${escapeHTML(state.jobSearch)}"></div><span class="count-note" role="status" aria-live="polite">${filtered.length} ${filtered.length===1?'oportunidade':'oportunidades'}</span></div><div class="filter-bar" role="group" aria-label="Filtrar vagas">${filters.map(([key,label])=>`<button class="filter ${state.jobFilter===key?'selected':''}" aria-pressed="${state.jobFilter===key}" data-action="job-filter" data-filter="${key}">${label}${key==='pending_review'&&state.counts.pending_review?` <span>${state.counts.pending_review}</span>`:''}</button>`).join('')}</div><section class="panel job-table"><div class="table-heading"><span>OPORTUNIDADE</span><span>STATUS</span><span></span></div>${jobResultsMarkup(filtered)}</section><p class="help-text">Use × para descartar uma vaga e a lixeira para excluí-la do histórico. Revise a candidatura antes de aprovar. Candidaturas por e-mail podem ser enviadas imediatamente pelo Gmail conectado.</p>`;
 }
 
 const mailDate = value => {
@@ -724,7 +770,7 @@ function financeView(){
   const syncMessage=state.bankLoadError?'Falha ao consultar os bancos. Os valores exibidos podem estar desatualizados.':
     state.bankSyncError?`Não foi possível atualizar os bancos. ${state.bankSyncError} Os valores exibidos podem estar desatualizados.`:
     hasBankWarning?'Algumas conexões precisam de atenção. Confira os detalhes abaixo.':
-    syncTimes.length?`Dados bancários sincronizados em ${fmtTime(new Date(Math.min(...syncTimes)).toISOString())}. Use Sincronizar para importar novos lançamentos.`:
+    syncTimes.length?`Última importação pelo Kito em ${fmtTime(new Date(Math.min(...syncTimes)).toISOString())}. A data de atualização na instituição aparece em cada conexão.`:
     'Aguardando a primeira sincronização das contas.';
   const bills=bank.bills||{bills:[],owedCents:0,paidCents:0};
   const month=insights.month;
@@ -780,9 +826,11 @@ function financeView(){
     `<div class="bank-items">${bank.items.map(item=>`<article class="bank-item">
       <div class="bank-item-symbol">${icon('wallet',20)}</div>
       <div class="bank-item-details"><strong>${text(item.institution||'Aguardando primeira sincronização')}</strong>
-        <span class="bank-item-id" title="${escapeHTML(item.id)}">ID ${escapeHTML(item.id.slice(0,8))}… · ${item.last_synced_at?`Atualizado em ${fmtTime(item.last_synced_at)}`:'Ainda não sincronizado'}</span>
+        <span class="bank-item-id" title="${escapeHTML(item.id)}">ID ${escapeHTML(item.id.slice(0,8))}… · ${item.last_synced_at?`Consulta do Kito: ${fmtTime(item.last_synced_at)}`:'Ainda não consultado'}</span>
+        <small class="bank-item-id">${item.source_updated_at?`Fonte atualizada em ${fmtTime(item.source_updated_at)}`:'Atualização da fonte não informada'} · ${item.latest_transaction_on?`Movimentação mais recente: ${fmtDate(item.latest_transaction_on)}`:'Sem movimentações importadas'}</small>
         ${item.last_error?`<small class="bank-error" role="status">${text(item.last_error)}</small>`:''}</div>
       <span class="bank-connection-status ${item.last_error?'bank-status-error':item.last_synced_at?'bank-status-ok':''}">${item.last_error?'Atenção':item.last_synced_at?'Sincronizado':'Pendente'}</span>
+      <button type="button" class="button outline bank-refresh-item" data-action="refresh-bank-item" data-id="${escapeHTML(item.id)}" title="Consultar os dados mais recentes disponíveis">Consultar atualização</button>
       <button type="button" class="quiet-icon" data-action="remove-bank-item" data-id="${escapeHTML(item.id)}" aria-label="Remover conexão ${escapeHTML(item.institution||item.id)}" title="Remover do aplicativo">${icon('trash',16)}</button>
     </article>`).join('')}</div>`);
   const movements=bankFold('movements','Movimentações dos bancos',`Até 200 lançamentos · últimos 180 dias`,
@@ -848,6 +896,10 @@ function settingsView(){
   const startupSupported=Boolean(startup?.supported);
   const prefs=state.hub.job_preferences;
   return `${pageHeading('Configurações','Ajuste o Kito ao seu jeito de trabalhar.')}
+  <section class="panel settings-panel appearance-settings">${cardHeading('Aparência')}
+    <p class="panel-description">Escolha um tema para o Kito. A preferência fica salva neste computador.</p>
+    <div class="theme-options" role="group" aria-label="Tema do aplicativo">${Object.entries(themes).map(([key, theme])=>`<button type="button" class="theme-option ${activeTheme===key?'is-active':''}" data-action="set-theme" data-theme="${key}" aria-pressed="${activeTheme===key}"><span class="theme-preview theme-preview-${key}" aria-hidden="true"><span></span><span></span><span></span></span><strong>${theme.label}</strong><small>${theme.detail}</small></button>`).join('')}</div>
+  </section>
   <section class="panel settings-panel">${cardHeading('Automação em segundo plano')}
     <p class="panel-description">Com o Kito aberto na bandeja, as candidaturas aprovadas por e-mail são enviadas e as respostas dos recrutadores são verificadas automaticamente.</p>
     <div class="settings-list"><label class="settings-row"><span><strong>Iniciar com o Windows</strong><small>${startupSupported?'Abrir em segundo plano, sem janela ou terminal.':'Disponível na versão instalada do aplicativo para Windows.'}</small></span><input type="checkbox" class="switch-input" data-action="toggle-startup" ${startup?.enabled?'checked':''} ${startupSupported?'':'disabled'}><span class="switch-ui" aria-hidden="true"></span></label></div>
@@ -877,7 +929,7 @@ function settingsView(){
     <div class="layout-editor">${layoutColumnMarkup('main','Coluna principal','Área mais larga')}${layoutColumnMarkup('aside','Coluna lateral','Resumo e informações rápidas')}</div>
   </section>
   <section class="panel settings-panel">${cardHeading('Módulos do Kito')}<p class="panel-description">Ative ou oculte os módulos do menu. Seus dados são preservados.</p><div class="settings-list">${Object.entries(moduleLabels).map(([key,label])=>`<label class="settings-row"><span><strong>${label}</strong><small>${({tasks:'Listas e prioridades',routine:'Hábitos e atividades diárias',finance:'Entradas, despesas e saldo mensal',pc:'Informações do computador',shortcuts:'Links frequentes'})[key]}</small></span><input type="checkbox" class="switch-input" data-action="toggle-module" data-module-name="${key}" ${modules[key]?'checked':''}><span class="switch-ui" aria-hidden="true"></span></label>`).join('')}</div></section>
-  <section class="panel settings-panel settings-about">${cardHeading('Sobre o Kito')}<div class="spec-row"><span>Armazenamento</span><strong>SQLite · local</strong></div><div class="spec-row"><span>Privacidade</span><strong>Seus dados ficam neste computador</strong></div><div class="spec-row"><span>Versão</span><strong>1.0.4</strong></div></section>`;
+  <section class="panel settings-panel settings-about">${cardHeading('Sobre o Kito')}<div class="spec-row"><span>Armazenamento</span><strong>SQLite · local</strong></div><div class="spec-row"><span>Privacidade</span><strong>Seus dados ficam neste computador</strong></div><div class="spec-row"><span>Versão</span><strong>${escapeHTML(state.updates?.currentVersion||'1.0.6')}</strong></div><div class="update-settings"><button type="button" class="button outline" data-action="check-updates" ${state.updateChecking?'disabled':''}>${icon('refresh',16)} ${state.updateChecking?'Verificando...':'Verificar atualizações'}</button><small>${state.updates?.updateAvailable?'Uma nova versão está disponível.':state.updateError|| (state.updates?'Você está usando a versão mais recente.':'Aguardando verificação.')}</small></div></section>`;
 }
 
 function spacesView(){
@@ -918,6 +970,42 @@ function toast(message,type='success',undo=null) {
 let focusBeforeDialog=null;
 function closeDialog(){if(dialogBackdrop.hidden)return;dialogBackdrop.hidden=true;document.body.classList.remove('dialog-open');$('#dialog-body').innerHTML='';if(focusBeforeDialog?.isConnected)focusBeforeDialog.focus();focusBeforeDialog=null;}
 function openDialog(title,subtitle,html){focusBeforeDialog=document.activeElement;$('#dialog-title').textContent=title;$('#dialog-label').textContent=subtitle;$('#dialog-body').innerHTML=html;dialogBackdrop.hidden=false;document.body.classList.add('dialog-open');($('#dialog-body').querySelector('input:not([type=hidden]),textarea,button')||$('#close-dialog')).focus();}
+function confirmKito(message) {
+  return new Promise(resolve => {
+    const previousFocus=document.activeElement;
+    const backdrop=document.createElement('div');
+    backdrop.className='kito-confirm-backdrop';
+    backdrop.innerHTML=`<section class="kito-confirm" role="alertdialog" aria-modal="true" aria-labelledby="kito-confirm-title" aria-describedby="kito-confirm-message">
+      <span class="dialog-label">KITO · CONFIRMAÇÃO</span>
+      <h2 id="kito-confirm-title">Confirmar ação</h2>
+      <p id="kito-confirm-message"></p>
+      <div class="kito-confirm-actions"><button type="button" class="button outline" data-confirm="cancel">Cancelar</button><button type="button" class="button primary" data-confirm="accept">Confirmar</button></div>
+    </section>`;
+    backdrop.querySelector('#kito-confirm-message').textContent=message;
+    document.body.append(backdrop);
+    const buttons=[...backdrop.querySelectorAll('button')];
+    const finish=confirmed=>{
+      backdrop.removeEventListener('keydown',onKeydown);
+      backdrop.remove();
+      if(previousFocus?.isConnected)previousFocus.focus();
+      resolve(confirmed);
+    };
+    const onKeydown=event=>{
+      if(event.key==='Escape'){event.preventDefault();event.stopPropagation();finish(false);}
+      if(event.key==='Tab'){
+        const first=buttons[0],last=buttons.at(-1);
+        if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+        else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+      }
+    };
+    backdrop.addEventListener('keydown',onKeydown);
+    backdrop.addEventListener('click',event=>{
+      if(event.target===backdrop)finish(false);
+      else if(event.target.closest('[data-confirm]'))finish(event.target.closest('[data-confirm]').dataset.confirm==='accept');
+    });
+    buttons[0].focus();
+  });
+}
 const field = (label,name,placeholder='',type='text',required=false,attrs='')=>`<label class="form-field"><span>${label}</span><input name="${name}" type="${type}" placeholder="${placeholder}" ${required?'required':''} ${attrs}></label>`;
 const formActions = (label) => `<div class="form-actions"><button type="button" class="button outline" data-action="close-dialog">Cancelar</button><button type="submit" class="button primary">${icon('check',16)}${label}</button></div>`;
 function addDialog(kind){
@@ -1050,6 +1138,13 @@ document.addEventListener('click',async event=>{
   const nav=event.target.closest('a[data-view]');if(nav){event.preventDefault();navigate(nav.dataset.view,true,true);return;}
   const target=event.target.closest('[data-action]');if(!target)return;
   const {action,id}=target.dataset;
+  if(action==='check-updates')return checkKitoUpdates({manual:true});
+  if(action==='download-update')return window.wndWindow?.openUpdate?.().catch(()=>toast('Não foi possível abrir a página de download.','error'));
+  if(action==='set-theme'){
+    applyTheme(target.dataset.theme);
+    render();
+    return;
+  }
   if(action==='toggle-balance-visibility'){
     hideBalances=!hideBalances;
     localStorage.setItem('kito.hideBalances', String(hideBalances));
@@ -1067,7 +1162,7 @@ document.addEventListener('click',async event=>{
     toast('Correio e candidaturas sincronizados.');
   });
   if(action==='mail-disconnect')return withBusy(target,async()=>{
-    if(!confirm('Desconectar sua conta de e-mail do Kito?'))return;
+    if(!await confirmKito('Desconectar sua conta de e-mail do Kito?'))return;
     await api('/api/mail/disconnect',{});
     await refreshMail();
     toast('Gmail desconectado deste computador.');
@@ -1085,20 +1180,25 @@ document.addEventListener('click',async event=>{
         ${formActions('Salvar categoria')}</form>`);
   }
   if(action==='delete-finance-bill')return withBusy(target,async()=>{
-    if(!confirm('Excluir esta conta a pagar e o histórico dos seus pagamentos?'))return;
+    if(!await confirmKito('Excluir esta conta a pagar e o histórico dos seus pagamentos?'))return;
     await api(`/api/finance/bills/${id}/delete`,{});
     await load();toast('Conta excluída.');
   });
   if(action==='sync-bank')return withBusy(target,async()=>{
     await syncBanks();
   });
+  if(action==='refresh-bank-item')return withBusy(target,async()=>{
+    const result=await api(`/api/banking/items/${encodeURIComponent(id)}/refresh`,{});
+    await load({forceRender:true});
+    toast(result.message || (result.pending?'Atualização bancária pendente.':'Atualização confirmada. Movimentações importadas.'));
+  });
   if(action==='remove-bank-item')return withBusy(target,async()=>{
-    if(!confirm('Remover esta conexão e seus dados bancários importados do Kito? A conexão no Pluggy continuará ativa.'))return;
+    if(!await confirmKito('Remover esta conexão e seus dados bancários importados do Kito? A conexão no Pluggy continuará ativa.'))return;
     await api(`/api/banking/items/${encodeURIComponent(id)}/remove`,{});
     await load();toast('Conexão removida do Kito.');
   });
   if(action==='clear-bank-credentials')return withBusy(target,async()=>{
-    if(!window.wndBank||!confirm('Excluir as credenciais Pluggy guardadas neste computador?'))return;
+    if(!window.wndBank||!await confirmKito('Excluir as credenciais Pluggy guardadas neste computador?'))return;
     await window.wndBank.clearCredentials();
     closeDialog();await load();toast('Credenciais locais excluídas.');
   });
@@ -1133,14 +1233,20 @@ document.addEventListener('click',async event=>{
   if(action==='close-dialog')return closeDialog();
   if(action==='edit-space')return addDialog('space-edit');
   if(action==='delete-space')return withBusy(target,async()=>{
-    const s=spaceForView();if(!s||!confirm(`Excluir o espaço "${s.title}" e todos os blocos?`))return;
+    const s=spaceForView();if(!s||!await confirmKito(`Excluir o espaço "${s.title}" e todos os blocos?`))return;
     await api(`/api/spaces/${s.id}/delete`,{});state.view='spaces';await load();navigate('spaces');toast('Espaço excluído.');
   });
   if(action==='delete-space-item')return withBusy(target,async()=>{
-    if(!confirm('Excluir este bloco?'))return;
+    if(!await confirmKito('Excluir este bloco?'))return;
     await api(`/api/spaces/${target.dataset.space}/items/${id}/delete`,{});await load();toast('Bloco excluído.');
   });
   if(action==='history')return historyDialog();
+  if(action==='search-new-jobs')return withBusy(target,async()=>{
+    const result=await api('/api/opportunities/search',{});
+    state.jobFilter='pending_review';
+    await load({forceRender:true});
+    toast(result.added?`${result.added} vaga(s) nova(s) encontrada(s) na ${result.source}.`:`Busca concluída na ${result.source}. Nenhuma vaga nova dentro do seu perfil.`);
+  });
   if(action==='job-filter'){
     state.jobFilter=target.dataset.filter;
     $$('.filter').forEach(el=>{const selected=el.dataset.filter===state.jobFilter;el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));});
@@ -1158,7 +1264,7 @@ document.addEventListener('click',async event=>{
   if(action==='job-detail')return jobDetail(id);
   if(action==='delete-job')return withBusy(target,async()=>{
     const job=state.jobs.find(item=>item.id===id);
-    if(!confirm(`Excluir definitivamente ${job?.title||'esta vaga'}? Os detalhes e o histórico serão removidos. A vaga não será importada novamente pelo mesmo link.`))return;
+    if(!await confirmKito(`Excluir definitivamente ${job?.title||'esta vaga'}? Os detalhes e o histórico serão removidos. A vaga não será importada novamente pelo mesmo link.`))return;
     await api(`/api/opportunities/${id}/delete`,{});
     closeDialog();await load();toast('Vaga excluída.');
   });
@@ -1176,13 +1282,13 @@ document.addEventListener('click',async event=>{
       const message=job?.status==='approved'&&job.channel==='email'
         ?'Rejeitar esta vaga e retirar a candidatura da fila de envio?'
         :'Rejeitar esta oportunidade?';
-      if(!confirm(message))return;
+      if(!await confirmKito(message))return;
       await api(`/api/opportunities/${id}/reject`,{});toast('Oportunidade rejeitada.');
     }
     closeDialog();await load();
   });
   if(action==='packet-job')return withBusy(target,async()=>{const r=await api(`/api/opportunities/${$('#dialog').dataset.jobId}/packet`,{});toast(`Pacote salvo em: ${r.item.folder}`);});
-  if(action.startsWith('delete-'))return withBusy(target,async()=>{if(!confirm('Excluir este registro?'))return;const module=({ 'delete-task':'tasks','delete-routine':'routines','delete-transaction':'transactions','delete-shortcut':'shortcuts'})[action];await api(`/api/${module}/${id}/delete`,{});await load();toast('Registro excluído.');});
+  if(action.startsWith('delete-'))return withBusy(target,async()=>{if(!await confirmKito('Excluir este registro?'))return;const module=({ 'delete-task':'tasks','delete-routine':'routines','delete-transaction':'transactions','delete-shortcut':'shortcuts'})[action];await api(`/api/${module}/${id}/delete`,{});await load();toast('Registro excluído.');});
 });
 document.addEventListener('change',async e=>{
   const t=e.target;

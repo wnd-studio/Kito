@@ -6,7 +6,7 @@
 
 ### Windows
 
-Os executáveis são gerados na pasta `release/` pelo comando `npm run build:win`. A versão 1.0.4 gera um instalador (`Kito Setup 1.0.4.exe`) e uma versão portátil (`Kito 1.0.4.exe`). Não é necessário instalar Node.js para utilizar os executáveis.
+Os executáveis são gerados na pasta `release/` pelo comando `npm run build:win`. A versão 1.0.5 gera um instalador (`Kito Setup 1.0.5.exe`) e uma versão portátil (`Kito 1.0.5.exe`). Não é necessário instalar Node.js para utilizar os executáveis. Em Configurações > Aparência, é possível escolher entre Kito, Meia-noite e Claro. A preferência de tema é salva localmente.
 
 Na primeira execução de uma instalação nova, o aplicativo cria um banco de dados próprio no perfil do usuário do Windows. A opção **Iniciar com o Windows** pode ser ativada em **Configurações** ou pelo menu da bandeja. Ao fechar a janela, o aplicativo continua na bandeja para executar sincronizações habilitadas. Escolha **Encerrar Kito** no ícone da bandeja para sair.
 

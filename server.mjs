@@ -5,8 +5,9 @@ import { join } from 'node:path';
 import { list, stats, recentEvents, recentRuns, ingest, edit, decide, deleteOpportunity, packet, queue, get, mailLinks, markMailReplyNotified, acknowledgeMailReply, transition, notifications, jobAlertStats } from './core.mjs';
 import { submitApprovedEmail, reconcileSentEmails, sendOpportunityAlert, reconcileJobAlerts } from './gmail.mjs';
 import { getHub, getPc, addTask, toggleTask, deleteTask, addRoutine, routineDay, deleteRoutine, addTransaction, deleteTransaction, addShortcut, deleteShortcut, setModules, setOverviewLayout, setJobPreferences, addSpace, editSpace, deleteSpace, addSpaceItem, toggleSpaceItem, deleteSpaceItem, addBankItem, removeBankItem, addFinanceBill, setFinanceBillPaid, deleteFinanceBill, setBankCategory } from './hub.mjs';
-import { bankSnapshot, syncBanking } from './banking.mjs';
+import { bankSnapshot, syncBanking, refreshBankItem } from './banking.mjs';
 import { PluggyError } from './pluggy.mjs';
+import { searchJobs } from './job-search.mjs';
 
 let PORT = Number(process.env.VAGAS_PORT ?? 4517);
 const HOST = '127.0.0.1';
@@ -146,6 +147,7 @@ const server=http.createServer(async(req,res)=>{
       if(req.headers.origin!==BASE || req.headers['x-csrf-token']!==csrf || !String(req.headers['content-type']||'').startsWith('application/json')) return json(res,403,{error:'Origem ou token inválido.'});
       const data=await body(req);
       if(url.pathname==='/api/opportunities')return json(res,200,ingest({...data,channel:'manual',source:'Adicionada manualmente'}));
+      if(url.pathname==='/api/opportunities/search')return json(res,200,await searchJobs());
       if(url.pathname==='/api/mail/configure')return json(res,200,{status:requireGmail().configure(data.clientId,data.clientSecret)});
       if(url.pathname==='/api/mail/disconnect')return json(res,200,{status:requireGmail().disconnect()});
       if(url.pathname==='/api/mail/connect/cancel')return json(res,200,{status:requireGmail().cancelConnect()});
@@ -177,6 +179,8 @@ const server=http.createServer(async(req,res)=>{
       if(bankCategoryAction)return json(res,200,{ok:true,...setBankCategory(decodeURIComponent(bankCategoryAction[1]),data.category)});
       if(url.pathname==='/api/banking/items')return json(res,200,{ok:true,...addBankItem(data.itemId)});
       if(url.pathname==='/api/banking/sync')return json(res,200,{ok:true,...await syncBanking()});
+      const bankRefresh=url.pathname.match(/^\/api\/banking\/items\/([a-f0-9-]+)\/refresh$/);
+      if(bankRefresh)return json(res,200,{ok:true,...await refreshBankItem(bankRefresh[1])});
       const bankRemoval=url.pathname.match(/^\/api\/banking\/items\/([a-f0-9-]+)\/remove$/);
       if(bankRemoval)return json(res,200,{ok:true,...removeBankItem(bankRemoval[1])});
       if(url.pathname==='/api/shortcuts')return json(res,200,{ok:true,...addShortcut(data)});

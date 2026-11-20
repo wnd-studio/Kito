@@ -1,6 +1,6 @@
 {
   "name": "wnd-vagas",
-  "version": "1.0.4",
+  "version": "1.0.6",
   "private": true,
   "type": "module",
   "scripts": {
@@ -28,6 +28,7 @@
       "gmail.mjs",
       "application-prep.mjs",
       "job-match.mjs",
+      "job-search.mjs",
       "job-preferences.mjs",
       "hub.mjs",
       "banking.mjs",

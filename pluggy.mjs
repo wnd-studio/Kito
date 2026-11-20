@@ -106,6 +106,8 @@ export function createPluggyClient({ fetchImpl = fetch, baseUrl = API_ROOT, getC
 
   return {
     getItem: itemId => request(`/items/${encodeURIComponent(itemId)}`),
+    refreshItem: itemId => request(`/items/${encodeURIComponent(itemId)}`, { method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' }, body: '{}' }),
     getAccounts: itemId => listAccounts(itemId),
     getTransactions: (accountId, dateFrom) => listCursor(`/v2/transactions?accountId=${encodeURIComponent(accountId)}&dateFrom=${dateFrom}`)
   };

@@ -54,11 +54,40 @@ async function main() {
     page.on('dialog', d => d.accept());
     await page.goto(base);
     await page.locator('.dashboard-intro').waitFor();
+    await page.locator('a[data-view="settings"]').first().click();
+    await page.locator('[data-action="set-theme"][data-theme="midnight"]').click();
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'midnight');
+    assert.equal(await page.locator('html').evaluate(el => getComputedStyle(el).getPropertyValue('--accent').trim()), '#8fd6ff');
+    await page.reload();
+    await page.locator('[data-action="set-theme"][data-theme="midnight"]').waitFor();
+    assert.equal(await page.locator('[data-theme="midnight"]').count() > 0, true);
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'midnight', 'Tema deve persistir após reiniciar a página');
+    await page.locator('[data-action="set-theme"][data-theme="light"]').click();
+    assert.equal(await page.locator('html').evaluate(el => getComputedStyle(el).getPropertyValue('--bg').trim()), '#f4f5f0');
+    await page.locator('[data-action="set-theme"][data-theme="graphite"]').click();
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'graphite');
+    assert.equal(await page.locator('html').evaluate(el => getComputedStyle(el).getPropertyValue('--accent').trim()), '#d4d9e0');
+    await page.reload();
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'graphite', 'Tema Grafite deve persistir após recarregar');
+    await page.locator('[data-action="set-theme"][data-theme="original"]').click();
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'original');
+    await page.locator('a[data-view="overview"]').first().click();
+    await page.locator('.dashboard-intro').waitFor();
     assert.equal(await page.locator('.review-panel [data-action="add-job"]').count(), 1,
       'Uma instalação vazia deve permitir adicionar vaga pelo painel inicial');
 
     // Uma instalação vazia permite cadastrar uma vaga, rejeitar e excluir sem importador externo.
     await page.locator('a[data-view="vagas"]').first().click();
+    assert.equal(await page.locator('[data-action="search-new-jobs"]').count(), 1,
+      'A página de vagas deve exibir o botão de busca manual');
+    const searchStyle = await page.locator('#job-search').evaluate(input => {
+      input.focus();
+      const css=getComputedStyle(input);
+      return {border:css.borderTopWidth,background:css.backgroundColor,radius:css.borderTopLeftRadius};
+    });
+    assert.equal(searchStyle.border,'0px','Busca de vagas deve ter apenas uma borda externa');
+    assert.equal(searchStyle.background,'rgba(0, 0, 0, 0)','O input de busca não deve desenhar um segundo retângulo');
+    assert.equal(searchStyle.radius,'0px');
     await page.getByText('Nenhuma vaga encontrada').waitFor();
     await page.locator('.job-table [data-action="add-job"]').click();
     const jobForm=page.locator('form[data-form="job"]');
@@ -69,9 +98,12 @@ async function main() {
     await jobForm.locator('button[type="submit"]').click();
     await page.locator('.job-table > .job-list-item').filter({hasText:'Designer de interfaces'}).waitFor();
     assert.equal(await page.locator('.job-table > .job-list-item').count(),1);
+    assert.match(await page.locator('.job-table .job-added').innerText(), /Adicionada em \d{2}\/\d{2}\/\d{4} às \d{2}:\d{2}/);
     await page.locator('.job-table [data-action="reject-job"]').click();
+    await page.locator('.kito-confirm [data-confirm="accept"]').click();
     await page.locator('.job-table > .job-list-item .status-rejected').waitFor();
     await page.locator('.job-table [data-action="delete-job"]').click();
+    await page.locator('.kito-confirm [data-confirm="accept"]').click();
     await page.getByText('Nenhuma vaga encontrada').waitFor();
     await page.reload();
     await page.locator('main[data-view="vagas"]').waitFor();
@@ -347,6 +379,7 @@ async function main() {
     await page.locator('form[data-form="space-edit"] button[type=submit]').click();
     await page.locator('.page-heading').getByText('Projetos, referências e checklist').waitFor();
     await page.locator('.space-block').filter({hasText:'Referências'}).locator('[data-action="delete-space-item"]').click();
+    await page.locator('.kito-confirm [data-confirm="accept"]').click();
     await page.waitForFunction(() => document.querySelectorAll('.space-block').length === 2);
     assert.equal(await page.locator('.space-block').count(), 2);
 
