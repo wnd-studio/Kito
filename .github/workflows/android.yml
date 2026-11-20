@@ -80,9 +80,9 @@ jobs:
             adb shell am start -n br.net.wnd.kito/.MainActivity
             sleep 12
             adb shell pidof br.net.wnd.kito
-            adb shell uiautomator dump /data/local/tmp/kito-ui.xml
             adb exec-out screencap -p > output/Kito-Android-emulator.png
             test -s output/Kito-Android-emulator.png
+            adb shell pidof br.net.wnd.kito
       - uses: actions/upload-artifact@v4
         if: always()
         with:
