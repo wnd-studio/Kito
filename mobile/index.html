@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#141615">
+  <meta name="description" content="Kito. Seu dia, num lugar só.">
+  <title>Kito</title>
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">✳</span><span>kito<span class="brand-dot">.</span></span></div>
+      <span class="header-tag">SEU DIA, NUM LUGAR SÓ.</span>
+      <button class="avatar" type="button" data-nav="settings" aria-label="Configurações">K</button>
+    </header>
+    <main class="main" id="main" tabindex="-1" aria-live="polite"><p class="loading">Carregando seus dados…</p></main>
+    <nav class="tabbar" aria-label="Navegação principal" id="tabs"></nav>
+  </div>
+  <dialog id="editor" class="editor"><form id="editor-form"><header><div><span class="eyebrow">KITO / NOVO</span><h2 id="editor-title"></h2></div><button type="button" class="icon-button" data-close aria-label="Fechar">×</button></header><div id="editor-fields"></div><footer><button type="button" class="button secondary" data-close>Cancelar</button><button type="submit" class="button primary">Salvar</button></footer></form></dialog>
+  <dialog id="confirm-dialog" class="confirm-dialog"><div><span class="eyebrow">KITO / CONFIRMAÇÃO</span><h2>Confirmar ação</h2><p id="confirm-text"></p><footer><button type="button" class="button secondary" data-confirm="cancel">Cancelar</button><button type="button" class="button primary" data-confirm="yes">Confirmar</button></footer></div></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

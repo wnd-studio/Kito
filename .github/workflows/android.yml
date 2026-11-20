@@ -1,0 +1,71 @@
+name: Kito Android
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: mobile/android/**/*.gradle*
+      - uses: android-actions/setup-android@v3
+      - name: Android SDK
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Install and test mobile
+        working-directory: mobile
+        run: |
+          npm ci
+          npm test
+          npm run build
+          npx cap sync android
+      - name: Assemble native Android
+        working-directory: mobile/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon assembleDebug testDebugUnitTest
+      - name: Verify installable APK
+        run: |
+          set -euo pipefail
+          mkdir -p output
+          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk output/Kito-Android-v1.0.0-preview.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose output/Kito-Android-v1.0.0-preview.apk
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging output/Kito-Android-v1.0.0-preview.apk | head -n 6
+      - name: Android emulator smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          script: |
+            adb install -r output/Kito-Android-v1.0.0-preview.apk
+            adb shell am start -n br.net.wnd.kito/.MainActivity
+            sleep 12
+            adb shell uiautomator dump /sdcard/kito-ui.xml
+            adb shell cat /sdcard/kito-ui.xml | grep -q 'Seu dia'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kito-Android-v1.0.0-preview
+          path: output/Kito-Android-v1.0.0-preview.apk
+          if-no-files-found: error
+          retention-days: 14

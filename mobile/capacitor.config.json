@@ -1,0 +1,11 @@
+{
+  "appId": "br.net.wnd.kito",
+  "appName": "Kito",
+  "webDir": "dist",
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#141615"
+    }
+  }
+}
