@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR" class="%%DESKTOP%%">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141615">
+  <meta name="description" content="Kito — seu dia, num lugar só. Tarefas, vagas, finanças e rotina.">
+  <meta name="csrf-token" content="%%CSRF%%">
+  <title>Kito · Hoje</title>
+  <link rel="icon" href="/kito-mark.png" type="image/png">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/liquid.css">
+  <link rel="stylesheet" href="/professional.css">
+  <link rel="stylesheet" href="/kito.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell" id="app">
+    <aside class="sidebar" id="sidebar-navigation" aria-label="Navegação principal">
+      <a class="brand" href="#overview" aria-label="Kito — Hoje" title="Hoje">
+        <span class="brand-mark" aria-hidden="true"><img src="/kito-mark.png" alt=""></span>
+        <span class="brand-type">kito<span class="brand-sub">SEU DIA, NUM LUGAR SÓ.</span></span>
+      </a>
+      <div class="nav-area">
+        <p class="nav-label">ESPAÇO DE TRABALHO</p>
+        <nav class="nav-list" id="primary-nav">
+          <a href="#overview" data-view="overview" data-tip="Hoje" class="nav-link active" title="Hoje"><span class="nav-icon" data-icon="overview"></span><span>Hoje</span></a>
+          <a href="#vagas" data-view="vagas" data-tip="Vagas & propostas" class="nav-link" title="Vagas & propostas"><span class="nav-icon" data-icon="briefcase"></span><span>Vagas & propostas</span><span class="nav-count" id="nav-pending" hidden>0</span></a>
+          <a href="#correio" data-view="correio" data-tip="Correio" class="nav-link" title="Correio"><span class="nav-icon" data-icon="inbox"></span><span>Correio</span><span class="nav-count" id="nav-mail-unread" hidden>0</span></a>
+          <a href="#tasks" data-view="tasks" data-tip="Tarefas" class="nav-link" data-module="tasks" title="Tarefas"><span class="nav-icon" data-icon="check"></span><span>Tarefas</span></a>
+          <a href="#routine" data-view="routine" data-tip="Rotina" class="nav-link" data-module="routine" title="Rotina"><span class="nav-icon" data-icon="calendar"></span><span>Rotina</span></a>
+          <a href="#finance" data-view="finance" data-tip="Finanças" class="nav-link" data-module="finance" title="Finanças"><span class="nav-icon" data-icon="wallet"></span><span>Finanças</span></a>
+          <a href="#spaces" data-view="spaces" data-tip="Espaços" class="nav-link" title="Espaços"><span class="nav-icon" data-icon="overview"></span><span>Espaços</span></a>
+        </nav>
+        <div class="custom-spaces" id="space-nav" aria-label="Espaços personalizados"></div>
+        <p class="nav-label nav-label-bottom">FERRAMENTAS</p>
+        <nav class="nav-list">
+          <a href="#pc" data-view="pc" data-tip="Meu PC" class="nav-link" data-module="pc" title="Meu PC"><span class="nav-icon" data-icon="monitor"></span><span>Meu PC</span></a>
+          <a href="#shortcuts" data-view="shortcuts" data-tip="Atalhos" class="nav-link" data-module="shortcuts" title="Atalhos"><span class="nav-icon" data-icon="link"></span><span>Atalhos</span></a>
+          <a href="#settings" data-view="settings" data-tip="Configurações" class="nav-link" title="Configurações"><span class="nav-icon" data-icon="settings"></span><span>Configurações</span></a>
+        </nav>
+      </div>
+      <div class="sidebar-footer">
+        <div class="connection"><span class="connection-light"></span><span>Ambiente local</span><span class="connection-meta">ONLINE</span></div>
+        <a href="#settings" data-view="settings" class="user-panel" title="Configurações" aria-label="Configurações do Kito">
+          <span class="user-avatar">K</span><span class="user-text"><strong>Meu Kito</strong><small>Preferências</small></span><span class="external-icon" data-icon="settings"></span>
+        </a>
+      </div>
+    </aside>
+
+    <div class="main-column">
+      <header class="topbar">
+        <div class="topbar-left"><button class="icon-button mobile-menu" id="mobile-menu" aria-label="Abrir menu" aria-controls="sidebar-navigation" aria-expanded="false"><span data-icon="menu"></span></button><span class="breadcrumb-root">KITO</span><span class="breadcrumb-sep">/</span><span id="breadcrumb">Hoje</span></div>
+        <div class="topbar-right"><span class="topbar-date" id="topbar-date"></span><button class="topbar-search" id="command-search" type="button" aria-label="Abrir ações e busca" aria-haspopup="dialog" aria-controls="command-backdrop" aria-expanded="false"><span data-icon="search"></span><span>Buscar no Kito</span><kbd>Ctrl K</kbd></button><button class="icon-button notification-button" data-action="go-vagas" aria-label="Ver oportunidades pendentes" title="Oportunidades pendentes"><span data-icon="inbox"></span><span id="topbar-pending" hidden></span></button><button class="icon-button refresh-button" id="refresh" aria-label="Atualizar informações" title="Atualizar"><span data-icon="refresh"></span></button><a href="#settings" data-view="settings" class="topbar-avatar" aria-label="Configurações" title="Configurações">K</a></div>
+        <div class="window-controls" role="group" aria-label="Controles da janela">
+          <button type="button" class="window-control" data-window-action="minimize" aria-label="Minimizar janela" title="Minimizar"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10"/></svg></button>
+          <button type="button" class="window-control" data-window-action="maximize" aria-label="Maximizar janela" title="Maximizar"><svg class="maximize-glyph" viewBox="0 0 20 20" aria-hidden="true"><rect x="5.5" y="5.5" width="9" height="9" rx="1.2"/></svg><svg class="restore-glyph" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 7V5.5h7.5V13H13M5.5 8.5H12V15H5.5z"/></svg></button>
+          <button type="button" class="window-control window-control-close" data-window-action="close" aria-label="Fechar janela" title="Fechar"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6l8 8M14 6l-8 8"/></svg></button>
+        </div>
+      </header>
+      <main id="main-content" tabindex="-1" aria-live="polite">
+        <div class="initial-loading"><div class="loading-bar"></div><p>Preparando o seu dia...</p></div>
+      </main>
+      <footer class="main-footer"><span><span class="footer-dot"></span> KITO · LOCAL</span><span id="footer-sync">Dados locais · SQLite</span></footer>
+    </div>
+  </div>
+
+  <div class="mobile-shade" id="mobile-shade" hidden></div>
+  <div class="dialog-backdrop" id="dialog-backdrop" hidden>
+    <section class="dialog" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      <header class="dialog-header"><div><span class="dialog-label" id="dialog-label">KITO</span><h2 id="dialog-title"></h2></div><button class="icon-button" id="close-dialog" aria-label="Fechar janela"><span data-icon="close"></span></button></header>
+      <div id="dialog-body"></div>
+    </section>
+  </div>
+  <div class="command-backdrop" id="command-backdrop" hidden>
+    <section class="command-dialog" role="dialog" aria-modal="true" aria-label="Ações e busca do Kito">
+      <label class="command-input-wrap"><span data-icon="search"></span><input id="command-input" type="search" autocomplete="off" placeholder="Buscar ação, módulo ou espaço..." aria-label="Buscar ação, módulo ou espaço"><kbd>ESC</kbd></label>
+      <div id="command-results" class="command-results"></div>
+      <div class="command-hint">↑ ↓ para navegar · Enter para abrir · Esc para fechar</div>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

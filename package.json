@@ -1,0 +1,57 @@
+{
+  "name": "wnd-vagas",
+  "version": "1.0.4",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "desktop": "electron desktop/main.mjs",
+    "build:win": "electron-builder --win nsis portable",
+    "test": "node --test tests/*.test.mjs",
+    "test:ui": "node tests/browser-smoke.cjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "main": "desktop/main.mjs",
+  "build": {
+    "appId": "br.net.wnd.central",
+    "productName": "Kito",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "public/**/*",
+      "server.mjs",
+      "core.mjs",
+      "gmail.mjs",
+      "application-prep.mjs",
+      "job-match.mjs",
+      "job-preferences.mjs",
+      "hub.mjs",
+      "banking.mjs",
+      "bank-insights.mjs",
+      "pluggy.mjs",
+      "package.json"
+    ],
+    "win": {
+      "icon": "desktop/app-icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Kito"
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.3.4",
+    "electron-builder": "^26.18.0"
+  }
+}
