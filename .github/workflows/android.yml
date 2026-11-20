@@ -76,17 +76,24 @@ jobs:
           profile: pixel_6
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
           script: |
+            adb logcat -c
             adb install -r output/Kito-Android-v1.0.0-preview.apk
             adb shell am start -n br.net.wnd.kito/.MainActivity
-            sleep 12
+            sleep 30
             adb shell pidof br.net.wnd.kito
-            adb exec-out screencap -p > output/Kito-Android-emulator.png
-            test -s output/Kito-Android-emulator.png
+            adb exec-out screencap -p > output/Kito-Android-emulator-30s.png
+            sleep 30
+            adb exec-out screencap -p > output/Kito-Android-emulator-60s.png
             adb shell pidof br.net.wnd.kito
+            test -s output/Kito-Android-emulator-30s.png
+            test -s output/Kito-Android-emulator-60s.png
+            adb logcat -d -v time > output/Kito-Android-logcat.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Kito-Android-emulator-evidence
-          path: output/Kito-Android-emulator.png
+          path: |
+            output/Kito-Android-emulator-*.png
+            output/Kito-Android-logcat.txt
           if-no-files-found: warn
           retention-days: 14
