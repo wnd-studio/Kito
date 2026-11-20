@@ -91,9 +91,14 @@ jobs:
             adb shell pidof br.net.wnd.kito
             test -s output/Kito-Android-emulator-home.png
             test -s output/Kito-Android-emulator-tasks.png
+            # Android's UIAutomator tree reports the WebView node but omits its HTML text.
+            # Verify the navigation gesture changed the rendered screen instead.
+            if [ "$(sha256sum output/Kito-Android-emulator-home.png | cut -d' ' -f1)" = "$(sha256sum output/Kito-Android-emulator-tasks.png | cut -d' ' -f1)" ]; then
+              echo 'Navigation did not change the emulator screenshot' >&2
+              exit 1
+            fi
             timeout 40s adb shell uiautomator dump /sdcard/kito-ui.xml
             adb shell cat /sdcard/kito-ui.xml > output/Kito-Android-ui.xml
-            grep -q 'Lista limpa' output/Kito-Android-ui.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -391,7 +391,10 @@ async function start() {
   }
   render();
   if (native) {
-    try { await StatusBar.setStyle({style: Style.Dark}); } catch (error) { console.warn('Status bar', error); }
+    try {
+      await StatusBar.setBackgroundColor({color: '#141615'});
+      await StatusBar.setStyle({style: Style.Dark});
+    } catch (error) { console.warn('Status bar', error); }
     App.addListener('backButton', () => {
       if (editor.open) editor.close();
       else if (confirmDialog.open) confirmDialog.close();
