@@ -63,10 +63,19 @@ jobs:
           xcrun simctl bootstatus "$SIMULATOR_ID" -b
           xcrun simctl install "$SIMULATOR_ID" "$RUNNER_TEMP/KitoDerivedData/Build/Products/Debug-iphonesimulator/App.app"
           xcrun simctl launch "$SIMULATOR_ID" br.net.wnd.kito
-          sleep 12
           mkdir -p output
-          xcrun simctl io "$SIMULATOR_ID" screenshot output/Kito-iOS-Simulator-home.png
-          test -s output/Kito-iOS-Simulator-home.png
+          swiftc mobile/scripts/check-ios-screenshot.swift -o "$RUNNER_TEMP/check-ios-screenshot"
+          for attempt in $(seq 1 12); do
+            sleep 10
+            xcrun simctl io "$SIMULATOR_ID" screenshot output/Kito-iOS-Simulator-home.png
+            if "$RUNNER_TEMP/check-ios-screenshot" output/Kito-iOS-Simulator-home.png; then
+              echo "Kito interface rendered in iPhone simulator on attempt $attempt"
+              exit 0
+            fi
+            echo "Kito interface not rendered yet ($attempt/12)"
+          done
+          echo 'iPhone simulator displayed no recognizable Kito interface.' >&2
+          exit 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
