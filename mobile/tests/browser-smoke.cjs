@@ -50,6 +50,10 @@ async function main() {
     page.on('pageerror',error => errors.push(error.message));
     await page.goto(url);
     await page.getByRole('heading',{name:/Seu dia/}).waitFor();
+    const logo = page.locator('.app-header .brand-mark img');
+    await logo.waitFor({state:'visible'});
+    assert.equal(await logo.getAttribute('src'),'/kito-mark.png','Logo do cabeçalho deve usar a marca oficial');
+    assert.ok(await logo.evaluate(img => img.complete && img.naturalWidth > 0),'Logo do Kito deve carregar');
     await page.locator('[data-nav="tasks"]').last().click();
     await page.locator('[data-add="tasks"]').click();
     await page.locator('#editor-fields [name="title"]').fill('Enviar portfólio');
